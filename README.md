@@ -33,8 +33,6 @@ Proses yang dilakukan:
 4. Menyimpan keluaran dalam format NumPy, JSON, dan Pickle
 5. Menghasilkan video preview (opsional)
 
-> ⚠️ **Tidak ada normalisasi koordinat** dalam pipeline ini. Koordinat disimpan dalam format asli MediaPipe (range 0.0–1.0 relatif terhadap frame).
-
 ---
 
 ## Struktur Keypoint (Isharah Layout)

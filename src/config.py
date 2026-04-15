@@ -56,7 +56,7 @@ PREVIEW_OVERLAY_DIR = os.path.join(PREVIEW_DIR, "skeleton_rgb")
 
 MEDIAPIPE_CONFIG = {
     "static_image_mode": False,        # False for video tracking mode
-    "model_complexity": 1,             # 0=light, 1=balanced, 2=heavy
+    "model_complexity": 2,             # 0=light, 1=balanced, 2=heavy/accurate
     "smooth_landmarks": True,          # Apply temporal smoothing
     "enable_segmentation": False,      # Disable segmentation mask
     "refine_face_landmarks": True,     # Enable refined face mesh detection
@@ -114,8 +114,8 @@ PREVIEW_RESOLUTION = (640, 480)
 DRAW_CONNECTIONS = True   # Draw skeleton edges
 DRAW_JOINTS      = True   # Draw joint circles
 
-JOINT_RADIUS    = 3       # Pixel radius of joint circle
-LINE_THICKNESS  = 2       # Thickness of skeleton lines
+JOINT_RADIUS    = 2       # Pixel radius (kecil untuk akurasi analisis)
+LINE_THICKNESS  = 1       # Garis tipis agar tidak menutupi titik
 
 # Color per region — BGR format
 COLOR_LEFT_HAND  = (0,   255,  0)    # GL — green

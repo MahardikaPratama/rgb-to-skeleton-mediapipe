@@ -31,8 +31,11 @@ class PreviewGenerator:
         )
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        if resolution is None:
-            resolution = self.default_resolution
+
+        # Force skeleton-only previews to a fixed 256x256 resolution.
+        # This ensures consistency across videos with different resolutions
+        # and avoids estimation / visual mismatch caused by varying sizes.
+        resolution = (256, 256)
 
         # Ensure integers
         res = (int(resolution[0]), int(resolution[1]))

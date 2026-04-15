@@ -60,7 +60,7 @@ class SkeletonPipeline:
     # ------------------------------------------------------------------
     # Single video
     # ------------------------------------------------------------------
-    def process_video(self, video_path, label=None):
+    def process_video(self, video_path, label=None, output_subpath=""):
         """
         Extract skeleton from a single video file.
 
@@ -70,13 +70,15 @@ class SkeletonPipeline:
             Path to the input RGB video.
         label : int or None
             Class label (stored in pickle if provided).
+        output_subpath : str
+            Subpath to prepend to output directories for mirroring structure.
         """
 
         if not os.path.isfile(video_path):
             raise FileNotFoundError(f"Video not found: {video_path}")
 
         video_name = os.path.splitext(os.path.basename(video_path))[0]
-        print(f"\n[INFO] Processing: {video_name}")
+        print(f"\n[INFO] Processing: {video_name} -> {output_subpath or '.'}")
 
         # 1. Extract raw keypoints
         keypoints = self.extractor.extract_video(video_path)
@@ -85,17 +87,20 @@ class SkeletonPipeline:
 
         # 2. Save NumPy
         if self.save_npy:
-            npy_path = os.path.join(SKELETON_DIR, f"{video_name}.npy")
+            # Create the subdirectory if it doesn't exist
+            output_dir = os.path.join(SKELETON_DIR, output_subpath)
+            os.makedirs(output_dir, exist_ok=True)
+            npy_path = os.path.join(output_dir, f"{video_name}.npy")
             np.save(npy_path, keypoints)
             print(f"       Saved .npy  → {npy_path}")
 
         # 3. Save JSON
         if self.save_json:
-            self.json_conv.save(keypoints, video_name)
+            self.json_conv.save(keypoints, video_name, output_subpath)
 
         # 4. Save Pickle
         if self.save_pickle:
-            self.pickle_conv.save(keypoints, video_name, label)
+            self.pickle_conv.save(keypoints, video_name, label, output_subpath)
 
         # 5. Preview
         if self.gen_preview:
@@ -110,10 +115,10 @@ class SkeletonPipeline:
                 resolution = None
 
             if self.gen_skel_only:
-                self.preview_gen.generate_skeleton_only(keypoints, video_name, resolution)
+                self.preview_gen.generate_skeleton_only(keypoints, video_name, resolution, output_subpath)
 
             if self.gen_overlay:
-                self.preview_gen.generate_overlay(keypoints, video_path, video_name, resolution)
+                self.preview_gen.generate_overlay(keypoints, video_path, video_name, resolution, output_subpath)
 
         print(f"[DONE] {video_name}\n")
         return keypoints

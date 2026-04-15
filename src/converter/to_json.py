@@ -8,12 +8,13 @@ class JSONConverter:
     def __init__(self):
         os.makedirs(JSON_DIR, exist_ok=True)
 
-    def save(self, keypoints: np.ndarray, video_name: str):
+    def save(self, keypoints: np.ndarray, video_name: str, output_subpath=""):
         """
         keypoints shape: (T, 86, 3)
         """
-
-        output_path = os.path.join(JSON_DIR, f"{video_name}.json")
+        output_dir = os.path.join(JSON_DIR, output_subpath)
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, f"{video_name}.json")
 
         data = {
             "video_name": video_name,

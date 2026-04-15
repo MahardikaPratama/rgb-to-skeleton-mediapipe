@@ -27,6 +27,7 @@ Konversi video RGB menjadi representasi skeleton 86-keypoint menggunakan **Media
 Pipeline ini dirancang untuk penelitian **Continuous Sign Language Recognition (CSLR)** dan kompatibel dengan format dataset **Isharah**.
 
 Proses yang dilakukan:
+
 1. Membaca video RGB frame per frame
 2. Mendeteksi landmark tubuh menggunakan MediaPipe Holistic
 3. Memilih 86 keypoint yang relevan
@@ -39,12 +40,12 @@ Proses yang dilakukan:
 
 Total keypoint: **86**
 
-| Nama              | Singkatan | Indeks    | Jumlah | Sumber MediaPipe       |
-|-------------------|-----------|-----------|--------|------------------------|
-| Left Hand         | GL        | `0–20`    | 21     | `left_hand_landmarks`  |
-| Right Hand        | GR        | `21–41`   | 21     | `right_hand_landmarks` |
-| Mouth             | GM        | `42–60`   | 19     | `face_landmarks` (subset) |
-| Pose (upper body) | GP        | `61–85`   | 25     | `pose_landmarks`       |
+| Nama              | Singkatan | Indeks  | Jumlah | Sumber MediaPipe          |
+| ----------------- | --------- | ------- | ------ | ------------------------- |
+| Left Hand         | GL        | `0–20`  | 21     | `left_hand_landmarks`     |
+| Right Hand        | GR        | `21–41` | 21     | `right_hand_landmarks`    |
+| Mouth             | GM        | `42–60` | 19     | `face_landmarks` (subset) |
+| Pose (upper body) | GP        | `61–85` | 25     | `pose_landmarks`          |
 
 ```python
 import numpy as np
@@ -59,15 +60,14 @@ pose_idx       = np.arange(61, 86)   # GP
 
 Semua region dipilih secara berurut langsung dari output MediaPipe (landmark 0 hingga N-1):
 
-| Region     | Sumber MediaPipe          | Landmark yang diambil |
-|------------|---------------------------|------------------------|
-| Left Hand  | `left_hand_landmarks`     | landmark 0 – 20 (semua 21)  |
-| Right Hand | `right_hand_landmarks`    | landmark 0 – 20 (semua 21)  |
-| Mouth      | `face_landmarks`          | landmark 0 – 18 (19 pertama) |
-| Pose       | `pose_landmarks`          | landmark 0 – 24 (25 pertama) |
+| Region     | Sumber MediaPipe       | Landmark yang diambil        |
+| ---------- | ---------------------- | ---------------------------- |
+| Left Hand  | `left_hand_landmarks`  | landmark 0 – 20 (semua 21)   |
+| Right Hand | `right_hand_landmarks` | landmark 0 – 20 (semua 21)   |
+| Mouth      | `face_landmarks`       | landmark 0 – 18 (19 pertama) |
+| Pose       | `pose_landmarks`       | landmark 0 – 24 (25 pertama) |
 
 Count per region didapat langsung dari range di `config.py` — tidak ada daftar indeks hardcoded.
-
 
 ---
 
@@ -135,23 +135,71 @@ conda env update -f environment.yml --prune
 
 ### Catatan Versi
 
-| Paket | Versi | Alasan |
-|-------|-------|--------|
-| Python | `3.10` | Kompatibel dengan mediapipe 0.10.14 |
+| Paket     | Versi     | Alasan                                               |
+| --------- | --------- | ---------------------------------------------------- |
+| Python    | `3.10`    | Kompatibel dengan mediapipe 0.10.14                  |
 | mediapipe | `0.10.14` | Versi terakhir yang memiliki `mp.solutions.holistic` |
-| numpy | `< 2.0` | Kompatibel dengan mediapipe 0.10.14 |
+| numpy     | `< 2.0`   | Kompatibel dengan mediapipe 0.10.14                  |
 
 ---
 
 ## Cara Penggunaan
 
-### Satu Video
+Aplikasi ini dapat dijalankan melalui dua cara:
+
+1.  **Aplikasi UI (RGB to Skeleton Studio)**: Untuk penggunaan interaktif melalui web browser.
+2.  **Command-Line Interface (CLI)**: Untuk pemrosesan batch dan integrasi skrip.
+
+### RGB to Skeleton Studio (Aplikasi UI)
+
+Studio ini menyediakan antarmuka grafis untuk mengelola video, menjalankan proses ekstraksi skeleton, memantau status, dan melihat hasil secara visual. Dibangun menggunakan Streamlit (frontend) dan FastAPI (backend).
+
+**1. Instalasi Dependensi**
+
+Pastikan semua paket di `requirements.txt` terinstal.
+
+```bash
+pip install -r requirements.txt
+```
+
+**2. Jalankan Backend (FastAPI)**
+
+Buka terminal baru dan jalankan server API:
+
+```bash
+uvicorn src.api:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Server ini akan menangani permintaan pemrosesan dari antarmuka Streamlit.
+
+**3. Jalankan Frontend (Streamlit)**
+
+Buka terminal lain dan jalankan aplikasi Streamlit:
+
+```bash
+streamlit run RGB_to_Skeleton_Studio.py
+```
+
+Aplikasi akan terbuka secara otomatis di browser Anda, biasanya di `http://localhost:8501`.
+
+**Fitur Aplikasi:**
+
+- **Dashboard**: Menampilkan ringkasan data dan job terakhir.
+- **Processing**: Memilih video (tunggal, ganda, atau per folder) dan memulai proses ekstraksi.
+- **Jobs**: Melihat status semua job (pending, running, done, failed).
+- **Results**: Menjelajahi, memvisualisasikan, dan mengunduh hasil skeleton (`.npy`).
+- **Previews**: Menampilkan video preview yang sudah di-render atau membuat animasi GIF secara langsung.
+- **Data Management**: Mengunggah video baru ke folder `data/raw`.
+
+### Command-Line Interface (CLI)
+
+#### Satu Video
 
 ```bash
 python main.py --input data/raw/marah.mp4
 ```
 
-### Satu Folder
+#### Satu Folder
 
 Memproses semua file video dalam folder secara berurutan:
 
@@ -169,14 +217,14 @@ python main.py --input data/raw/marah.mp4 --label 3
 
 ### Opsi Tambahan
 
-| Flag | Keterangan |
-|------|------------|
-| `--no-npy` | Tidak menyimpan file `.npy` |
-| `--no-json` | Tidak menyimpan file `.json` |
-| `--no-pickle` | Tidak menyimpan file `.pkl` |
-| `--no-preview` | Tidak menghasilkan video preview sama sekali |
-| `--no-overlay` | Tidak menghasilkan preview overlay (skeleton + RGB) |
-| `--no-skeleton-only` | Tidak menghasilkan preview skeleton saja |
+| Flag                 | Keterangan                                          |
+| -------------------- | --------------------------------------------------- |
+| `--no-npy`           | Tidak menyimpan file `.npy`                         |
+| `--no-json`          | Tidak menyimpan file `.json`                        |
+| `--no-pickle`        | Tidak menyimpan file `.pkl`                         |
+| `--no-preview`       | Tidak menghasilkan video preview sama sekali        |
+| `--no-overlay`       | Tidak menghasilkan preview overlay (skeleton + RGB) |
+| `--no-skeleton-only` | Tidak menghasilkan preview skeleton saja            |
 
 **Contoh: proses folder, simpan hanya .npy, tanpa preview:**
 
@@ -247,12 +295,12 @@ with open("data/pickle/marah.pkl", "rb") as f:
 
 Warna per region:
 
-| Region     | Warna      |
-|------------|------------|
-| Left Hand  | Cyan       |
-| Right Hand | Kuning     |
-| Mouth      | Merah      |
-| Pose       | Hijau      |
+| Region     | Warna  |
+| ---------- | ------ |
+| Left Hand  | Cyan   |
+| Right Hand | Kuning |
+| Mouth      | Merah  |
+| Pose       | Hijau  |
 
 ---
 

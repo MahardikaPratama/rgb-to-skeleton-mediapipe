@@ -27,11 +27,12 @@ from typing import Optional, Sequence, Tuple
 
 def plot_frame(keypoints: np.ndarray,
                frame_idx: int = 0,
+               ax: Optional[plt.Axes] = None,
                figsize: Tuple[float, float] = (5, 6),
                title: Optional[str] = None,
                show: bool = True,
                save_path: Optional[str] = None,
-               scale_to: Optional[Tuple[float, float]] = None) -> None:
+               scale_to: Optional[Tuple[float, float]] = None) -> Optional[plt.Figure]:
     """Plot a single frame from a keypoints array.
 
     Parameters
@@ -40,6 +41,8 @@ def plot_frame(keypoints: np.ndarray,
         Array of shape (T, 86, 3) or (T, 86, 2).
     frame_idx : int
         Frame index to plot.
+    ax : Optional[plt.Axes]
+        Matplotlib axes to plot on. If None, a new figure and axes are created.
     figsize : tuple
         Matplotlib figure size.
     title : Optional[str]
@@ -58,6 +61,12 @@ def plot_frame(keypoints: np.ndarray,
         raise ValueError("keypoints must have shape (T, 86, C)")
 
     frame = keypoints[frame_idx]
+
+    # If an axes object is not provided, create a new figure and axes
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
 
     # If input has 3 channels, use first two (x, y)
     if frame.shape[1] >= 2:
@@ -96,45 +105,50 @@ def plot_frame(keypoints: np.ndarray,
         if idx.size == 0:
             return
         pts = coords[idx]
-        plt.scatter(pts[:, 0], pts[:, 1], c=color, s=10, label=label)
+        ax.scatter(pts[:, 0], pts[:, 1], c=color, s=10, label=label)
 
-    plt.figure(figsize=figsize)
-
-    plot_part(pose_idx, 'blue', 'Pose')
-    plot_part(left_hand_idx, 'yellow', 'Left Hand')
-    plot_part(right_hand_idx, 'green', 'Right Hand')
-    plot_part(mouth_idx, 'red', 'Mouth')
-
-    plt.gca().invert_yaxis()
-    plt.axis('equal')
-    plt.legend()
-    plt.grid(True)
+    plot_part(pose_idx, 'r', 'Pose')
+    plot_part(left_hand_idx, 'g', 'Left Hand')
+    plot_part(right_hand_idx, 'b', 'Right Hand')
+    plot_part(mouth_idx, 'c', 'Mouth')
 
     if title is None:
-        title = f"Colored Skeleton Visualization - Frame {frame_idx}"
-    plt.title(title)
+        ax.set_title(f"Frame {frame_idx}")
+    else:
+        ax.set_title(title)
+
+    # Invert y-axis to match image coordinates (origin at top-left)
+    # Only do this if we are not scaling, otherwise it's inverted twice
+    if scale_to is None:
+        ax.invert_yaxis()
+
+    ax.set_aspect('equal', adjustable='box')
+    ax.legend(loc='best', fontsize='small')
 
     if save_path:
-        plt.savefig(save_path, bbox_inches='tight')
+        fig.savefig(save_path, bbox_inches='tight')
 
     if show:
         plt.show()
-    else:
-        plt.close()
+
+    # Return the figure so it can be used in Streamlit (e.g., st.pyplot(fig))
+    return fig
 
 
-def _main(argv):
-    if len(argv) < 2:
-        print("Usage: python -m src.visualizer.plot_skeleton <keypoints.npy> [frame_idx]")
-        return 1
+# ======================================================================
+# CLI Entry Point
+# ======================================================================
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
 
-    npy_path = argv[1]
-    frame_idx = int(argv[2]) if len(argv) >= 3 else 0
+    path = sys.argv[1]
+    idx = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 
-    data = np.load(npy_path)
-    plot_frame(data, frame_idx=frame_idx)
-    return 0
-
-
-if __name__ == '__main__':
-    raise SystemExit(_main(sys.argv))
+    try:
+        kps = np.load(path)
+        plot_frame(kps, frame_idx=idx)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)

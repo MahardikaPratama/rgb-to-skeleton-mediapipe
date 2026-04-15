@@ -67,9 +67,13 @@ class PreviewGenerator:
 
         cap = cv2.VideoCapture(original_video_path)
 
-        # Determine resolution either from provided parameter or from video
+        # Respect rotation metadata so output matches original orientation
+        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+
+        # Determine resolution AFTER enabling auto-rotation
+        # (rotated videos swap width/height)
         if resolution is None:
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             resolution = (width, height)
 

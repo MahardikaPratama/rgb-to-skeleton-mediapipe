@@ -1,3 +1,20 @@
+"""
+KeypointSelector
+
+Validates shape of extracted keypoint arrays.
+
+Expected shape: (T, 86, C) where:
+    T = number of frames
+    86 = total keypoints (isharah layout)
+    C = coordinate dimensions (2 or 3)
+
+Keypoint layout:
+    Index  0 – 20  : Left Hand  (GL)
+    Index 21 – 41  : Right Hand (GR)
+    Index 42 – 60  : Mouth      (GM)
+    Index 61 – 85  : Pose       (GP)
+"""
+
 import numpy as np
 from src.config import TOTAL_KEYPOINTS
 
@@ -8,22 +25,27 @@ class KeypointSelector:
 
     def validate(self, keypoints: np.ndarray):
         """
-        Validation for input keypoints.
-        Expected shape: (T, 86, C)
+        Validate that extracted keypoints have the expected shape.
+
+        Parameters
+        ----------
+        keypoints : np.ndarray, shape (T, 86, C)
+
+        Returns
+        -------
+        bool : True if valid
+
+        Raises
+        ------
+        ValueError
         """
         if keypoints.ndim != 3:
-            raise ValueError("Input must be a 3D tensor (T, N, C)")
+            raise ValueError(
+                f"Keypoints must be a 3D array (T, N, C), got shape {keypoints.shape}"
+            )
         if keypoints.shape[1] != self.total_keypoints:
             raise ValueError(
-                f"Number of keypoints must be {self.total_keypoints}, "
-                f"but found {keypoints.shape[1]}"
+                f"Expected {self.total_keypoints} keypoints per frame, "
+                f"got {keypoints.shape[1]}"
             )
-
         return True
-
-    def reorder(self, keypoints: np.ndarray):
-        """
-        If in the future you want to change the order of nodes.
-        Currently, it just returns the original.
-        """
-        return keypoints

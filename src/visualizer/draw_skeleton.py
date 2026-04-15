@@ -1,37 +1,38 @@
 """
-Skeleton Drawer Module
+Skeleton Drawing Module
 
-This module provides visualization utilities for rendering
-86-keypoint skeleton data extracted from MediaPipe Holistic.
+Renders 86-keypoint skeletons on a canvas or over an RGB frame.
+Simple style: small dots + connecting lines, no legend.
 
-The skeleton structure consists of:
-- 12 upper-body pose keypoints
-- 21 left-hand keypoints
-- 21 right-hand keypoints
-- 32 selected facial expression keypoints
-
-The class supports:
-- Joint visualization
-- Skeleton edge connections
-- Facial expression rendering
-- Optional RGB background overlay
-
-Designed for preview, debugging, and qualitative analysis.
+Color scheme:
+    GL (left hand)  — Green
+    GR (right hand) — Orange-red
+    GM (mouth)      — Yellow
+    GP (pose)       — Red
 """
 
 import cv2
 import numpy as np
+
 from src.config import (
     DRAW_CONNECTIONS,
     DRAW_JOINTS,
     JOINT_RADIUS,
-    LINE_THICKNESS
+    LINE_THICKNESS,
+    LEFT_HAND_RANGE,
+    RIGHT_HAND_RANGE,
+    MOUTH_RANGE,
+    POSE_RANGE,
+    COLOR_LEFT_HAND,
+    COLOR_RIGHT_HAND,
+    COLOR_MOUTH,
+    COLOR_POSE,
 )
 
 
 class SkeletonDrawer:
     """
-    Utility class for drawing 86-keypoint skeleton frames.
+    Renders 86-keypoint skeleton frames.
 
     Parameters
     ----------
@@ -42,140 +43,75 @@ class SkeletonDrawer:
     def __init__(self, resolution=(640, 480)):
         self.width, self.height = resolution
 
-        # --------------------------------------------------
-        # Keypoint index ranges (Total = 86 keypoints)
-        # --------------------------------------------------
-        self.pose_range = (0, 12)          # 12 pose points
-        self.left_hand_range = (12, 33)    # 21 left-hand points
-        self.right_hand_range = (33, 54)   # 21 right-hand points
-        self.face_range = (54, 86)         # 32 facial expression points
+        self.left_hand_range  = LEFT_HAND_RANGE
+        self.right_hand_range = RIGHT_HAND_RANGE
+        self.mouth_range      = MOUTH_RANGE
+        self.pose_range       = POSE_RANGE
 
-        # --------------------------------------------------
-        # Pose connections (based on POSE_SELECTED order)
-        # --------------------------------------------------
-        self.pose_connections = [
-            (1, 2),                # Shoulder line
-            (1, 3), (3, 5),        # Left arm
-            (2, 4), (4, 6),        # Right arm
-            (1, 7), (2, 8),        # Shoulders to hips
-            (7, 8),                # Hip line
-            (0, 1), (0, 2),        # Nose to shoulders
-            (0, 9), (0, 10),       # Nose to ears
-        ]
-
-        # --------------------------------------------------
-        # Hand skeletal structure (21 keypoints)
-        # --------------------------------------------------
+        # Hand connections (21 keypoints, local indices)
         self.hand_connections = [
-            # Thumb
             (0, 1), (1, 2), (2, 3), (3, 4),
-
-            # Index finger
             (0, 5), (5, 6), (6, 7), (7, 8),
-
-            # Middle finger
             (0, 9), (9, 10), (10, 11), (11, 12),
-
-            # Ring finger
             (0, 13), (13, 14), (14, 15), (15, 16),
-
-            # Pinky
             (0, 17), (17, 18), (18, 19), (19, 20),
-
-            # Palm structure
-            (5, 9), (9, 13), (13, 17)
+            (5, 9), (9, 13), (13, 17),
         ]
 
-        # --------------------------------------------------
-        # Face structure (relative indices within 32-face subset)
-        # --------------------------------------------------
-        self.face_offset = 54
+        # Pose connections (25 keypoints, local indices 0-24)
+        self.pose_connections = [
+            (0, 11), (0, 12),
+            (11, 12),
+            (11, 13), (13, 15),
+            (12, 14), (14, 16),
+            (15, 17), (15, 19), (15, 21),
+            (16, 18), (16, 20), (16, 22),
+            (11, 23), (12, 24), (23, 24),
+        ]
 
-        self.face_contour = [0, 1, 2, 3]
+        # Mouth rings (sequential, local indices)
+        self.mouth_outer = list(range(10))
+        self.mouth_inner = list(range(10, 19))
 
-        self.left_eyebrow = [4, 5, 6]
-        self.right_eyebrow = [7, 8, 9]
+    # --------------------------------------------------
+    # Utilities
+    # --------------------------------------------------
 
-        self.left_eye_upper = [10, 11, 12]
-        self.left_eye_lower = [15, 14, 13]
+    def _is_valid(self, point):
+        return abs(float(point[0])) > 1e-6 or abs(float(point[1])) > 1e-6
 
-        self.right_eye_upper = [16, 17, 18]
-        self.right_eye_lower = [21, 20, 19]
-
-        self.nose = [22, 23, 24, 25]
-        self.mouth = [26, 27, 28, 29, 30, 31]
-
-    # ======================================================
-    # Utility Methods
-    # ======================================================
-
-    def _is_valid_point(self, point):
-        """
-        Check whether a keypoint contains valid coordinates.
-
-        A point is considered valid if it is not near (0, 0).
-        This helps avoid drawing invalid or missing landmarks.
-
-        Parameters
-        ----------
-        point : array-like
-            (x, y) or (x, y, z) normalized coordinates.
-
-        Returns
-        -------
-        bool
-        """
-        return abs(point[0]) > 1e-6 or abs(point[1]) > 1e-6
-
-    def _denormalize(self, point):
-        """
-        Convert normalized MediaPipe coordinates (0–1 range)
-        into pixel coordinates based on canvas resolution.
-
-        Parameters
-        ----------
-        point : array-like
-            Normalized (x, y) coordinates.
-
-        Returns
-        -------
-        tuple(int, int)
-            Pixel coordinates (x, y).
-        """
-        x = int(point[0] * self.width)
-        y = int(point[1] * self.height)
+    def _px(self, point):
+        x = int(float(point[0]) * self.width)
+        y = int(float(point[1]) * self.height)
         return x, y
 
-    def _draw_line_connection(self, canvas, keypoints, indices, color):
-        """
-        Draw consecutive line connections between a list of indices.
+    def _draw_joints(self, canvas, points, color):
+        for pt in points:
+            if self._is_valid(pt):
+                # Thin outline circle — prevents adjacent dots from merging into blobs
+                cv2.circle(canvas, self._px(pt), JOINT_RADIUS, color, 1)
 
-        This function draws open chains (not closed loops).
+    def _draw_edges(self, canvas, points, connections, color):
+        for s, e in connections:
+            if s < len(points) and e < len(points):
+                if self._is_valid(points[s]) and self._is_valid(points[e]):
+                    cv2.line(canvas, self._px(points[s]), self._px(points[e]),
+                             color, LINE_THICKNESS)
 
-        Parameters
-        ----------
-        canvas : ndarray
-        keypoints : list or ndarray
-        indices : list[int]
-        color : tuple(B, G, R)
-        """
-        for i in range(len(indices) - 1):
-            start = indices[i]
-            end = indices[i + 1]
+    def _draw_ring(self, canvas, points, indices, color, closed=True):
+        valid = [i for i in indices if i < len(points) and self._is_valid(points[i])]
+        n = len(valid)
+        if n < 2:
+            return
+        steps = n if closed else n - 1
+        for k in range(steps):
+            a, b = valid[k], valid[(k + 1) % n]
+            cv2.line(canvas, self._px(points[a]), self._px(points[b]),
+                     color, LINE_THICKNESS)
 
-            if (
-                start < len(keypoints)
-                and end < len(keypoints)
-                and self._is_valid_point(keypoints[start])
-                and self._is_valid_point(keypoints[end])
-            ):
-                x1, y1 = self._denormalize(keypoints[start])
-                x2, y2 = self._denormalize(keypoints[end])
-                cv2.line(canvas, (x1, y1), (x2, y2), color, LINE_THICKNESS)
-
-    # ======================================================
-    # Main Drawing Function
-    # ======================================================
+    # --------------------------------------------------
+    # Main Render
+    # --------------------------------------------------
 
     def draw_frame(self, keypoints, background=None):
         """
@@ -183,116 +119,36 @@ class SkeletonDrawer:
 
         Parameters
         ----------
-        keypoints : list or ndarray
-            Array of 86 keypoints in normalized format.
+        keypoints : np.ndarray, shape (86, 3) or (86, 2)
         background : ndarray or None
-            Optional RGB image background.
+            Optional BGR image. If None, dark canvas is used.
 
         Returns
         -------
-        ndarray
-            Rendered image with skeleton overlay.
+        ndarray : rendered BGR image
         """
 
-        # Create blank white canvas if no background is provided
         if background is None:
-            canvas = np.ones((self.height, self.width, 3), dtype=np.uint8) * 255
+            canvas = np.full((self.height, self.width, 3), 30, dtype=np.uint8)
         else:
             canvas = cv2.resize(background, (self.width, self.height))
 
-        # --------------------------------------------------
-        # Draw joints
-        # --------------------------------------------------
-        if DRAW_JOINTS:
-            for i, point in enumerate(keypoints):
+        lh = keypoints[self.left_hand_range[0]:self.left_hand_range[1]]
+        rh = keypoints[self.right_hand_range[0]:self.right_hand_range[1]]
+        mo = keypoints[self.mouth_range[0]:self.mouth_range[1]]
+        po = keypoints[self.pose_range[0]:self.pose_range[1]]
 
-                if not self._is_valid_point(point):
-                    continue
-
-                # Color coding by body region
-                if i < 12:
-                    color = (0, 0, 255)        # Pose (Red)
-                elif i < 54:
-                    color = (255, 0, 0)        # Hands (Blue)
-                else:
-                    color = (0, 165, 255)      # Face (Orange)
-
-                x, y = self._denormalize(point)
-                cv2.circle(canvas, (x, y), JOINT_RADIUS, color, -1)
-
-        # --------------------------------------------------
-        # Draw skeleton connections
-        # --------------------------------------------------
         if DRAW_CONNECTIONS:
+            self._draw_edges(canvas, po, self.pose_connections,  COLOR_POSE)
+            self._draw_edges(canvas, lh, self.hand_connections,  COLOR_LEFT_HAND)
+            self._draw_edges(canvas, rh, self.hand_connections,  COLOR_RIGHT_HAND)
+            self._draw_ring(canvas, mo, self.mouth_outer, COLOR_MOUTH, closed=True)
+            self._draw_ring(canvas, mo, self.mouth_inner, COLOR_MOUTH, closed=True)
 
-            # ---- Pose edges ----
-            for start, end in self.pose_connections:
-                if (
-                    self._is_valid_point(keypoints[start])
-                    and self._is_valid_point(keypoints[end])
-                ):
-                    x1, y1 = self._denormalize(keypoints[start])
-                    x2, y2 = self._denormalize(keypoints[end])
-                    cv2.line(canvas, (x1, y1), (x2, y2), (0, 255, 0), LINE_THICKNESS)
-
-            # ---- Left Hand ----
-            left_hand_points = keypoints[self.left_hand_range[0]:self.left_hand_range[1]]
-
-            for start, end in self.hand_connections:
-                if (
-                    start < len(left_hand_points)
-                    and end < len(left_hand_points)
-                    and self._is_valid_point(left_hand_points[start])
-                    and self._is_valid_point(left_hand_points[end])
-                ):
-                    x1, y1 = self._denormalize(left_hand_points[start])
-                    x2, y2 = self._denormalize(left_hand_points[end])
-                    cv2.line(canvas, (x1, y1), (x2, y2), (255, 255, 0), LINE_THICKNESS)
-
-            # ---- Right Hand ----
-            right_hand_points = keypoints[self.right_hand_range[0]:self.right_hand_range[1]]
-
-            for start, end in self.hand_connections:
-                if (
-                    start < len(right_hand_points)
-                    and end < len(right_hand_points)
-                    and self._is_valid_point(right_hand_points[start])
-                    and self._is_valid_point(right_hand_points[end])
-                ):
-                    x1, y1 = self._denormalize(right_hand_points[start])
-                    x2, y2 = self._denormalize(right_hand_points[end])
-                    cv2.line(canvas, (x1, y1), (x2, y2), (0, 255, 255), LINE_THICKNESS)
-
-            # ---- Face Region ----
-            face_points = keypoints[self.face_offset:self.face_offset + 32]
-
-            # Eyebrows
-            self._draw_line_connection(canvas, face_points, self.left_eyebrow, (255, 100, 0))
-            self._draw_line_connection(canvas, face_points, self.right_eyebrow, (255, 100, 0))
-
-            # Eyes
-            for upper, lower in [
-                (self.left_eye_upper, self.left_eye_lower),
-                (self.right_eye_upper, self.right_eye_lower),
-            ]:
-                self._draw_line_connection(canvas, face_points, upper, (0, 200, 200))
-                self._draw_line_connection(canvas, face_points, lower, (0, 200, 200))
-
-            # Nose
-            self._draw_line_connection(canvas, face_points, self.nose, (100, 100, 100))
-
-            # Mouth (closed loop)
-            mouth_valid = [
-                i for i in self.mouth
-                if i < len(face_points)
-                and self._is_valid_point(face_points[i])
-            ]
-
-            for i in range(len(mouth_valid)):
-                a = mouth_valid[i]
-                b = mouth_valid[(i + 1) % len(mouth_valid)]
-                x1, y1 = self._denormalize(face_points[a])
-                x2, y2 = self._denormalize(face_points[b])
-                cv2.line(canvas, (x1, y1), (x2, y2), (0, 0, 200), LINE_THICKNESS)
+        if DRAW_JOINTS:
+            self._draw_joints(canvas, po, COLOR_POSE)
+            self._draw_joints(canvas, lh, COLOR_LEFT_HAND)
+            self._draw_joints(canvas, rh, COLOR_RIGHT_HAND)
+            self._draw_joints(canvas, mo, COLOR_MOUTH)
 
         return canvas

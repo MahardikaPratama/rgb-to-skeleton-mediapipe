@@ -1,48 +1,16 @@
-absl-py==2.4.0
-asttokens==3.0.1
-attrs==25.4.0
-cffi==2.0.0
-comm==0.2.3
-contourpy==1.3.2
-cycler==0.12.1
-debugpy==1.8.17
-decorator==5.2.1
-exceptiongroup==1.3.0
-executing==2.2.1
-flatbuffers==25.12.19
-fonttools==4.61.1
-ipykernel==7.1.0
-ipython==8.37.0
-jax==0.6.2
-jaxlib==0.6.2
-jedi==0.19.2
-jupyter_client==8.6.3
-jupyter_core==5.9.1
-kiwisolver==1.4.9
-matplotlib==3.10.8
-matplotlib-inline==0.2.1
-mediapipe==0.10.15
-ml_dtypes==0.5.4
-nest-asyncio==1.6.0
-numpy==1.26.4
-opencv-contrib-python==4.11.0.86
-opencv-python==4.8.0.76
-opt_einsum==3.4.0
-packaging @ file:///home/task_176104877067765/conda-bld/packaging_1761049113113/work
-parso==0.8.5
-pillow==12.1.1
-prompt_toolkit==3.0.52
-protobuf==4.25.8
-pure_eval==0.2.3
-pycparser==3.0
-pyparsing==3.3.2
-python-dateutil==2.9.0.post0
-pyzmq==27.1.0
-scipy==1.15.3
-six==1.17.0
-sounddevice==0.5.5
-stack-data==0.6.3
-tornado==6.5.2
-tqdm==4.67.3
-traitlets==5.14.3
-wcwidth==0.2.14
+# Core dependencies for RGB-to-Skeleton MediaPipe Pipeline
+#
+# PENTING: mediapipe harus <= 0.10.14
+# Mulai versi 0.10.18, mp.solutions.holistic dihapus dari MediaPipe.
+# Pipeline ini menggunakan mp.solutions.holistic (legacy API).
+
+# Computer Vision & MediaPipe
+mediapipe==0.10.14
+opencv-python>=4.8.0
+
+# Numerical
+numpy>=1.24.0,<2.0.0
+
+# Optional: visualization extras
+matplotlib>=3.7.0
+tqdm>=4.65.0

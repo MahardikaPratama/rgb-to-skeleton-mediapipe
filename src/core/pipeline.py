@@ -28,7 +28,7 @@ class SkeletonPipeline:
     
     def __init__(self, save_npy=True, save_json=True, save_pickle=True, save_excel=True,
                  generate_preview=True, generate_overlay=True,
-                 generate_skeleton_only=True):
+                 generate_skeleton_only=True, pickle_filename: str = None):
         """
         Initializes the pipeline with desired output targets.
 
@@ -40,6 +40,7 @@ class SkeletonPipeline:
             generate_preview (bool): Master switch for generating any video previews.
             generate_overlay (bool): Whether to generate skeletons overlaid on original RGB.
             generate_skeleton_only (bool): Whether to generate standalone skeleton videos.
+            pickle_filename (str, optional): Custom filename for the aggregated Pickle output.
         """
         self.extractor     = Holistic86Extractor()
         self.json_conv     = JSONConverter()
@@ -56,6 +57,7 @@ class SkeletonPipeline:
         self.gen_skel_only = generate_skeleton_only
         self.last_pickle_sample_id = None
         self.last_pickle_path = None
+        self.pickle_filename = pickle_filename
 
         os.makedirs(SKELETON_DIR, exist_ok=True)
 
@@ -83,6 +85,11 @@ class SkeletonPipeline:
         print(f"\n[INFO] Processing: {path_obj.name} -> {video_id} (Subpath: {output_subpath or '.'})")
 
         keypoints = self.extractor.extract_video(video_path)
+        
+        # Ensure only 2D coordinates (x, y) are kept across all formats
+        if keypoints.ndim == 3 and keypoints.shape[2] >= 2:
+            keypoints = keypoints[:, :, :2].astype("float64")
+            
         print(f"       Frames extracted: {keypoints.shape[0]}")
 
         if self.save_npy:
@@ -96,7 +103,13 @@ class SkeletonPipeline:
             self.json_conv.save(keypoints, video_id, output_subpath)
 
         if self.save_pickle:
-            sample_id, pickle_path = self.pickle_conv.save(keypoints, video_id, label, output_subpath)
+            sample_id, pickle_path = self.pickle_conv.save(
+                keypoints,
+                video_id,
+                label,
+                output_subpath,
+                filename=self.pickle_filename,
+            )
             self.last_pickle_sample_id = sample_id
             self.last_pickle_path = pickle_path
 

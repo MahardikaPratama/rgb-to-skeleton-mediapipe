@@ -34,21 +34,30 @@ class PickleConverter:
         """
         return "pose_data_isharah2000_hands_lips_body_phase2_SI.pkl"
 
-    def get_output_path(self, output_subpath: str = "") -> str:
+    def get_output_path(self, output_subpath: str = "", filename: str = None) -> str:
         """
         Constructs the absolute output path for the dataset file.
+        Note: We ignore output_subpath to accumulate all data into a single Pickle file.
 
         Args:
-            output_subpath (str, optional): An optional sub-directory structure. Defaults to "".
+            output_subpath (str, optional): Ignored.
+            filename (str, optional): Custom filename for the dataset Pickle file.
 
         Returns:
             str: The absolute path pointing to the dataset Pickle file.
         """
-        output_dir = os.path.join(PICKLE_DIR, output_subpath)
-        os.makedirs(output_dir, exist_ok=True)
-        return os.path.join(output_dir, self._dataset_filename())
+        os.makedirs(PICKLE_DIR, exist_ok=True)
+        target_name = filename or self._dataset_filename()
+        return os.path.join(PICKLE_DIR, target_name)
 
-    def save(self, keypoints: np.ndarray, video_id: str, label: int = None, output_subpath: str = "") -> Tuple[str, str]:
+    def save(
+        self,
+        keypoints: np.ndarray,
+        video_id: str,
+        label: int = None,
+        output_subpath: str = "",
+        filename: str = None,
+    ) -> Tuple[str, str]:
         """
         Saves or updates the aggregated dataset with the extracted keypoints.
 
@@ -65,6 +74,7 @@ class PickleConverter:
             video_id (str): The standardized ID representing the video (e.g., P01_S001_R01).
             label (int, optional): An optional integer class label. Defaults to None.
             output_subpath (str, optional): Optional sub-path. Defaults to "".
+            filename (str, optional): Custom filename for the dataset Pickle file.
 
         Returns:
             Tuple[str, str]: A tuple containing the `sample_id` used as the dictionary key, 
@@ -73,7 +83,7 @@ class PickleConverter:
         Raises:
             ValueError: If the keypoints shape is invalid or if the existing Pickle file is corrupted.
         """
-        output_path = self.get_output_path(output_subpath)
+        output_path = self.get_output_path(output_subpath, filename=filename)
 
         if keypoints.ndim != 3 or keypoints.shape[1] != 86:
             raise ValueError(f"Expected keypoints shape (T, 86, C), got {keypoints.shape}")

@@ -18,6 +18,21 @@ class PreviewGenerator:
         # Drawer will be created per-preview using the actual resolution.
         self.default_resolution = PREVIEW_RESOLUTION
 
+    @staticmethod
+    def _create_writer(output_path, fps, resolution):
+        # Try a small set of common codecs to avoid OpenH264/runtime issues.
+        # Put mp4v first to avoid libopenh264 missing warnings on Windows.
+        candidates = ["mp4v", "avc1", "XVID"]
+        for codec in candidates:
+            fourcc = cv2.VideoWriter_fourcc(*codec)
+            writer = cv2.VideoWriter(output_path, fourcc, fps, resolution)
+            if writer.isOpened():
+                if codec != "avc1":
+                    print(f"[WARN] Using fallback codec '{codec}' for preview output")
+                return writer
+            writer.release()
+        raise RuntimeError("Failed to initialize VideoWriter with any supported codec")
+
     def generate_skeleton_only(self, keypoints, output_name, resolution=None, output_subpath=""):
         """
         keypoints: (T, 86, 3)
@@ -30,8 +45,6 @@ class PreviewGenerator:
             f"{output_name}_skeleton.mp4"
         )
 
-        fourcc = cv2.VideoWriter_fourcc(*'avc1') # Use H.264 for better browser compatibility
-
         # Force skeleton-only previews to a fixed 256x256 resolution.
         # This ensures consistency across videos with different resolutions
         # and avoids estimation / visual mismatch caused by varying sizes.
@@ -40,12 +53,7 @@ class PreviewGenerator:
         # Ensure integers
         res = (int(resolution[0]), int(resolution[1]))
 
-        writer = cv2.VideoWriter(
-            output_path,
-            fourcc,
-            PREVIEW_FPS,
-            res
-        )
+        writer = self._create_writer(output_path, PREVIEW_FPS, res)
 
         drawer = SkeletonDrawer(res)
 
@@ -82,13 +90,7 @@ class PreviewGenerator:
 
         res = (int(resolution[0]), int(resolution[1]))
 
-        fourcc = cv2.VideoWriter_fourcc(*'avc1') # Use H.264 for better browser compatibility
-        writer = cv2.VideoWriter(
-            output_path,
-            fourcc,
-            PREVIEW_FPS,
-            res
-        )
+        writer = self._create_writer(output_path, PREVIEW_FPS, res)
 
         drawer = SkeletonDrawer(res)
 

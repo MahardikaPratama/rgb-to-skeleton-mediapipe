@@ -27,6 +27,11 @@ def parse_args():
         default=None,
         help="Class label to attach in pickle output (optional)"
     )
+    parser.add_argument(
+        "--pickle-name",
+        default=None,
+        help="Custom .pkl filename for the aggregated dataset (optional)"
+    )
     parser.add_argument("--no-npy",           action="store_true", help="Skip .npy export")
     parser.add_argument("--no-json",          action="store_true", help="Skip .json export")
     parser.add_argument("--no-pickle",        action="store_true", help="Skip .pkl export")

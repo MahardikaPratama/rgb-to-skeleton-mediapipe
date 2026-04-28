@@ -36,7 +36,7 @@ POSE_RANGE       = (61, 86)
 # 3. DATA FORMAT CONFIGURATION
 # ==========================================================
 
-USE_3D_COORDINATES = True  # If False, only (x, y) are stored
+USE_3D_COORDINATES = False  # If False, only (x, y) are stored
 
 
 # ==========================================================

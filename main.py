@@ -13,11 +13,14 @@ Examples:
 """
 
 import os
+import time
+from datetime import timedelta
 from src.core.pipeline import SkeletonPipeline
 from src.core.cli import parse_args
 
 if __name__ == "__main__":
     args = parse_args()
+    start_time = time.time()
 
     pipeline = SkeletonPipeline(
         save_npy               = not args.no_npy,
@@ -27,6 +30,7 @@ if __name__ == "__main__":
         generate_preview       = not args.no_preview,
         generate_overlay       = not args.no_overlay,
         generate_skeleton_only = not args.no_skeleton_only,
+        pickle_filename        = args.pickle_name,
     )
 
     input_path = args.input
@@ -37,3 +41,6 @@ if __name__ == "__main__":
         pipeline.process_video(input_path, label=args.label)
     else:
         raise FileNotFoundError(f"Input path does not exist: {input_path}")
+
+    elapsed = time.time() - start_time
+    print(f"\n[DONE] Total execution time: {timedelta(seconds=int(elapsed))}")

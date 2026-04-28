@@ -12,8 +12,9 @@ Examples:
     python main.py --input data/raw/marah.mp4 --no-preview
 """
 
-from src.pipeline import SkeletonPipeline, parse_args
 import os
+from src.core.pipeline import SkeletonPipeline
+from src.core.cli import parse_args
 
 if __name__ == "__main__":
     args = parse_args()
@@ -22,6 +23,7 @@ if __name__ == "__main__":
         save_npy               = not args.no_npy,
         save_json              = not args.no_json,
         save_pickle            = not args.no_pickle,
+        save_excel             = not args.no_excel,
         generate_preview       = not args.no_preview,
         generate_overlay       = not args.no_overlay,
         generate_skeleton_only = not args.no_skeleton_only,

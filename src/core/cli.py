@@ -32,11 +32,14 @@ def parse_args():
         default=None,
         help="Custom .pkl filename for the aggregated dataset (optional)"
     )
-    parser.add_argument("--no-npy",           action="store_true", help="Skip .npy export")
-    parser.add_argument("--no-json",          action="store_true", help="Skip .json export")
-    parser.add_argument("--no-pickle",        action="store_true", help="Skip .pkl export")
-    parser.add_argument("--no-excel",         action="store_true", help="Skip .xlsx export")
-    parser.add_argument("--no-preview",       action="store_true", help="Skip all preview generation")
-    parser.add_argument("--no-overlay",       action="store_true", help="Skip overlay preview only")
-    parser.add_argument("--no-skeleton-only", action="store_true", help="Skip skeleton-only preview")
+    parser.add_argument(
+        "--no-pickle",
+        action="store_true",
+        help="Skip .pkl export"
+    )
+    parser.add_argument(
+        "--no-excel",
+        action="store_true",
+        help="Skip .xlsx export"
+    )
     return parser.parse_args()

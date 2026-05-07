@@ -41,31 +41,6 @@ USE_3D_COORDINATES = False  # If False, only (x, y) are stored
 
 # ==========================================================
 # 4. OUTPUT CONFIGURATION
-# ==========================================================
-
-SAVE_NUMPY  = True    # Save as .npy
-SAVE_JSON   = True    # Save as .json
+# ==========================================
 SAVE_PICKLE = True    # Save as .pkl
 SAVE_EXCEL  = True    # Save as .xlsx
-
-JSON_INDENT = 2       # JSON formatting indentation
-
-
-# ==========================================================
-# 5. PREVIEW / VISUALIZATION CONFIGURATION
-# ==========================================================
-
-PREVIEW_FPS = 25
-PREVIEW_RESOLUTION = (640, 480)
-
-DRAW_CONNECTIONS = True   # Draw skeleton edges
-DRAW_JOINTS      = True   # Draw joint circles
-
-JOINT_RADIUS    = 2       # Pixel radius
-LINE_THICKNESS  = 1       # Garis tipis agar tidak menutupi titik
-
-# Color per region — BGR format
-COLOR_LEFT_HAND  = (0,   255,  0)    # GL — green
-COLOR_RIGHT_HAND = (0,   100, 255)   # GR — orange-red
-COLOR_MOUTH      = (0,   220, 220)   # GM — yellow
-COLOR_POSE       = (0,   0,   200)   # GP — red

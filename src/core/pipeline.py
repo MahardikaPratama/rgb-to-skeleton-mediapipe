@@ -10,13 +10,11 @@ from pathlib import Path
 import numpy as np
 import cv2
 
-from src.config import SKELETON_DIR
+from src.config import PICKLE_DIR
 from src.core.metadata import parse_video_id
 from src.extractor.holistic_86 import Holistic86Extractor
-from src.converter.to_json import JSONConverter
 from src.converter.to_pickle import PickleConverter
 from src.converter.to_excel import ExcelConverter
-from src.visualizer.preview_generator import PreviewGenerator
 
 SUPPORTED_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
@@ -26,40 +24,26 @@ class SkeletonPipeline:
     Main orchestration class for the RGB-to-Skeleton workflow.
     """
     
-    def __init__(self, save_npy=True, save_json=True, save_pickle=True, save_excel=True,
-                 generate_preview=True, generate_overlay=True,
-                 generate_skeleton_only=True, pickle_filename: str = None):
+    def __init__(self, save_pickle=True, save_excel=True, pickle_filename: str = None):
         """
         Initializes the pipeline with desired output targets.
 
         Args:
-            save_npy (bool): Whether to export raw keypoints as .npy files.
-            save_json (bool): Whether to export structured data as .json files.
             save_pickle (bool): Whether to export the dataset to a Pickle file.
             save_excel (bool): Whether to export to Excel file formats.
-            generate_preview (bool): Master switch for generating any video previews.
-            generate_overlay (bool): Whether to generate skeletons overlaid on original RGB.
-            generate_skeleton_only (bool): Whether to generate standalone skeleton videos.
             pickle_filename (str, optional): Custom filename for the aggregated Pickle output.
         """
         self.extractor     = Holistic86Extractor()
-        self.json_conv     = JSONConverter()
         self.pickle_conv   = PickleConverter()
         self.excel_conv    = ExcelConverter()
-        self.preview_gen   = PreviewGenerator()
 
-        self.save_npy      = save_npy
-        self.save_json     = save_json
         self.save_pickle   = save_pickle
         self.save_excel    = save_excel
-        self.gen_preview   = generate_preview
-        self.gen_overlay   = generate_overlay
-        self.gen_skel_only = generate_skeleton_only
         self.last_pickle_sample_id = None
         self.last_pickle_path = None
         self.pickle_filename = pickle_filename
 
-        os.makedirs(SKELETON_DIR, exist_ok=True)
+        os.makedirs(PICKLE_DIR, exist_ok=True)
 
     def process_video(self, video_path: str, label: int = None, output_subpath: str = "") -> np.ndarray:
         """
@@ -92,16 +76,6 @@ class SkeletonPipeline:
             
         print(f"       Frames extracted: {keypoints.shape[0]}")
 
-        if self.save_npy:
-            output_dir = os.path.join(SKELETON_DIR, output_subpath)
-            os.makedirs(output_dir, exist_ok=True)
-            npy_path = os.path.join(output_dir, f"{video_id}.npy")
-            np.save(npy_path, keypoints)
-            print(f"       Saved .npy  → {npy_path}")
-
-        if self.save_json:
-            self.json_conv.save(keypoints, video_id, output_subpath)
-
         if self.save_pickle:
             sample_id, pickle_path = self.pickle_conv.save(
                 keypoints,
@@ -115,23 +89,6 @@ class SkeletonPipeline:
 
         if self.save_excel:
             self.excel_conv.save(keypoints, video_id, output_subpath)
-
-        if self.gen_preview:
-            cap = cv2.VideoCapture(video_path)
-            cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
-            if cap.isOpened():
-                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                resolution = (w, h)
-                cap.release()
-            else:
-                resolution = None
-
-            if self.gen_skel_only:
-                self.preview_gen.generate_skeleton_only(keypoints, video_id, resolution, output_subpath)
-
-            if self.gen_overlay:
-                self.preview_gen.generate_overlay(keypoints, video_path, video_id, resolution, output_subpath)
 
         print(f"[DONE] {video_id}\n")
         return keypoints

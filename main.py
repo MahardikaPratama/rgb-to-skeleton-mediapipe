@@ -8,8 +8,7 @@ See --help for all options.
 Examples:
     python main.py --input data/raw/marah.mp4
     python main.py --input data/raw/
-    python main.py --input data/raw/ --no-json --no-pickle
-    python main.py --input data/raw/marah.mp4 --no-preview
+    python main.py --input data/raw/ --no-pickle
 """
 
 import os
@@ -23,14 +22,9 @@ if __name__ == "__main__":
     start_time = time.time()
 
     pipeline = SkeletonPipeline(
-        save_npy               = not args.no_npy,
-        save_json              = not args.no_json,
-        save_pickle            = not args.no_pickle,
-        save_excel             = not args.no_excel,
-        generate_preview       = not args.no_preview,
-        generate_overlay       = not args.no_overlay,
-        generate_skeleton_only = not args.no_skeleton_only,
-        pickle_filename        = args.pickle_name,
+        save_pickle     = not args.no_pickle,
+        save_excel      = not args.no_excel,
+        pickle_filename = args.pickle_name,
     )
 
     input_path = args.input

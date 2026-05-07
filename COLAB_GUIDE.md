@@ -88,30 +88,20 @@ Run this command to install the required dependencies:
 
 After the preparation is complete, you can directly execute `main.py` using a terminal command (prepended with `!`). Executing the script in Colab takes advantage of optimized read/write speeds and cloud-based processors.
 
-### Example: Running the Full Pipeline
+### Example: Running the Pipeline
 
-If your raw videos are in `data/raw/` and you want to extract all of them into Pickle, JSON, and Excel formats by default, run this cell:
+If your raw videos are in `data/raw/` and you want to extract all of them into Pickle and Excel formats, run this cell:
 
 ```bash
 !python main.py --input data/raw/ --pickle-name dataset_bisindo_colab.pkl
 ```
 
-### ⚡ Saving Execution Time (Fast Mode)
-To significantly speed up the data extraction process for large datasets, **it is highly recommended to disable video previews**. Colab will take a considerable amount of time if it has to re-render overlay and skeleton videos into `.mp4` format.
-
-Add the `--no-preview` parameter:
-
-```bash
-!python main.py --input data/raw/ --pickle-name dataset_bisindo_colab.pkl --no-preview
-```
-
 ### Additional Options (Disabling Other Outputs)
-Just like running the pipeline on a local terminal, you can set flags to disable JSON or Excel outputs if they are not needed, saving storage capacity on your Google Drive:
+Just like running the pipeline on a local terminal, you can set flags to disable Excel outputs if they are not needed, saving storage capacity on your Google Drive:
+
 ```bash
 !python main.py --input data/raw/ \
     --pickle-name dataset_bisindo_colab.pkl \
-    --no-preview \
-    --no-json \
     --no-excel
 ```
 
@@ -124,6 +114,6 @@ Just like running the pipeline on a local terminal, you can set flags to disable
 2. **MediaPipe in Python Limitations:** 
    Note that the MediaPipe Python library currently relies heavily on the CPU. However, the primary bottleneck in video processing (OpenCV reading/writing video frames) operates far more efficiently in the Google Colab virtual machine environment.
 3. **Direct Storage in Google Drive:** 
-   Because you have mounted and changed your directory (`cd`) directly into Google Drive, all output data (Pickle, JSON, Excel) will automatically sync and be permanently saved to your Google Drive account in real-time. Your data is safe even if Google Colab disconnects.
+   Because you have mounted and changed your directory (`cd`) directly into Google Drive, all output data (Pickle and Excel) will automatically sync and be permanently saved to your Google Drive account in real-time. Your data is safe even if Google Colab disconnects.
 4. **Execution Time Limit (Max 12 Hours):**
    The free version of Google Colab has a maximum runtime limit of approximately 12 hours per session. For datasets containing tens to hundreds of videos, this should be more than enough time to complete the process before disconnection.

@@ -22,24 +22,8 @@ def parse_args():
         help="Path to a single video file or a folder of videos"
     )
     parser.add_argument(
-        "--label", "-l",
-        type=int,
-        default=None,
-        help="Class label to attach in pickle output (optional)"
-    )
-    parser.add_argument(
         "--pickle-name",
-        default=None,
-        help="Custom .pkl filename for the aggregated dataset (optional)"
-    )
-    parser.add_argument(
-        "--no-pickle",
-        action="store_true",
-        help="Skip .pkl export"
-    )
-    parser.add_argument(
-        "--no-excel",
-        action="store_true",
-        help="Skip .xlsx export"
+        default="pose_bisindo",
+        help="Base filename for the pickle outputs (default: pose_bisindo)"
     )
     return parser.parse_args()

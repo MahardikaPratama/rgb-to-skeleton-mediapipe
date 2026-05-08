@@ -1,30 +1,28 @@
-# 🚀 Guide to Running the BISINDO Pipeline on Google Colab (GPU)
+# 🚀 Guide to Running the BISINDO Pipeline on Google Colab
 
-If you have thousands of videos, processing them locally using a CPU can take days. Therefore, running this pipeline on Google Colab with hardware acceleration is highly recommended.
+Processing large video datasets locally can be slow and resource-intensive. Google Colab provides a powerful virtual environment to execute this pipeline efficiently. Although MediaPipe Holistic primarily utilizes the CPU in Python environments, Colab's infrastructure offers superior I/O speeds and stable processing for batch execution.
 
-This guide explains how to execute this project on Google Colab, as well as how to mount Google Drive to ensure your data is automatically and securely stored.
+This guide explains how to execute this project on Google Colab and how to mount Google Drive for persistent storage.
 
 ---
 
 ## 1️⃣ Google Drive Preparation
 
-Because the Google Colab file system is ephemeral (it will be automatically deleted when the runtime ends), you must store your dataset and source code in **Google Drive**.
+Because the Google Colab file system is ephemeral (deleted after the session ends), you must store your dataset and source code in **Google Drive**.
 
-1. Open your [Google Drive](https://drive.google.com/).
-2. Create a new folder, for example, `BISINDO_Project`.
-3. Upload the entire source code folder of this project (including the `rgb-to-skeleton-mediapipe` directory) into the `BISINDO_Project` folder.
-4. Upload your raw `.mp4` videos into the `BISINDO_Project/rgb-to-skeleton-mediapipe/data/raw/` directory.
+1. Create a project folder in your Drive (e.g., `BISINDO_Project`).
+2. Upload the entire `rgb-to-skeleton-mediapipe` repository into that folder.
+3. Place your raw `.mp4` videos in `data/raw/`.
 
-Your Google Drive directory structure should look like this:
+**Structure:**
 ```text
 MyDrive/
 └── BISINDO_Project/
     └── rgb-to-skeleton-mediapipe/
         ├── data/
-        │   └── raw/              <-- Place your .mp4 videos here
+        │   ├── raw/              <-- Input Videos
+        │   └── results/          <-- Splitting CSVs (Essential)
         ├── src/
-        ├── README.md
-        ├── requirements.txt
         └── main.py
 ```
 
@@ -33,38 +31,34 @@ MyDrive/
 ## 2️⃣ Create a Google Colab Notebook
 
 1. Open [Google Colab](https://colab.research.google.com/).
-2. Create a new notebook by selecting **File > New notebook**.
-3. **Important! Enable the GPU:**
-   - Click the **Runtime > Change runtime type** menu.
-   - Under **Hardware accelerator**, select **T4 GPU** (or any other available GPU).
-   - Click **Save**.
+2. Create a **New notebook**.
+3. **Runtime Configuration**: 
+   - While this pipeline runs on the **CPU**, using a **High-RAM** runtime (if available in Colab Pro) can help with very large datasets.
+   - Go to **Runtime > Change runtime type** and ensure it is set to **None** (CPU) to avoid unnecessary GPU quota usage.
 
 ---
 
 ## 3️⃣ Mount Google Drive to Colab
 
-To access the files in your Google Drive from the Colab notebook, execute the following code cell:
+Run the following cell to access your Drive files:
 
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
 ```
-*When you run this cell, an authorization pop-up will appear. Follow the on-screen instructions to grant access to your Google Drive account.*
 
 ---
 
 ## 4️⃣ Navigate to the Project Directory
 
-Once your Drive is successfully mounted, navigate to your project folder using the following code block:
-
 ```python
 import os
 
-# Change the path below according to your folder's location in Google Drive
+# Update this path to match your folder structure
 project_path = '/content/drive/MyDrive/BISINDO_Project/rgb-to-skeleton-mediapipe'
 os.chdir(project_path)
 
-# Verify if we are in the correct directory
+# Verify location
 !pwd
 !ls -la
 ```
@@ -73,47 +67,35 @@ os.chdir(project_path)
 
 ## 5️⃣ Install Dependencies
 
-MediaPipe requires a specific version limit (`<= 0.10.14`) to ensure its holistic detection features (especially hand and lip tracking) function optimally within this pipeline.
-
-Run this command to install the required dependencies:
+MediaPipe requires `version <= 0.10.14` for stable holistic landmark detection.
 
 ```bash
-# Install libraries according to the project's requirements
 !pip install -r requirements.txt
 ```
 
 ---
 
-## 6️⃣ Running the Pipeline (Execution)
+## 6️⃣ Running the Pipeline
 
-After the preparation is complete, you can directly execute `main.py` using a terminal command (prepended with `!`). Executing the script in Colab takes advantage of optimized read/write speeds and cloud-based processors.
+Once the environment is ready, execute `main.py`. The pipeline will automatically read your splitting configuration from `splitting_data/results/` and sort the data into the appropriate pickle files.
 
-### Example: Running the Pipeline
-
-If your raw videos are in `data/raw/` and you want to extract all of them into Pickle and Excel formats, run this cell:
-
+### Standard Execution
 ```bash
-!python main.py --input data/raw/ --pickle-name dataset_bisindo_colab.pkl
+!python main.py --input data/raw/ --pickle-name pose_bisindo
 ```
 
-### Additional Options (Disabling Other Outputs)
-Just like running the pipeline on a local terminal, you can set flags to disable Excel outputs if they are not needed, saving storage capacity on your Google Drive:
-
-```bash
-!python main.py --input data/raw/ \
-    --pickle-name dataset_bisindo_colab.pkl \
-    --no-excel
-```
+*Note: This command will generate both Pickle datasets (train_dev & test) and subject-specific Excel files.*
 
 ---
 
 ## 💡 Colab Execution Tips & Tricks
 
-1. **Keep the Browser Tab Active:** 
-   Google Colab will automatically terminate the runtime if your browser tab is left idle for too long. Monitor the progress bar occasionally to keep the connection alive.
-2. **MediaPipe in Python Limitations:** 
-   Note that the MediaPipe Python library currently relies heavily on the CPU. However, the primary bottleneck in video processing (OpenCV reading/writing video frames) operates far more efficiently in the Google Colab virtual machine environment.
-3. **Direct Storage in Google Drive:** 
-   Because you have mounted and changed your directory (`cd`) directly into Google Drive, all output data (Pickle and Excel) will automatically sync and be permanently saved to your Google Drive account in real-time. Your data is safe even if Google Colab disconnects.
-4. **Execution Time Limit (Max 12 Hours):**
-   The free version of Google Colab has a maximum runtime limit of approximately 12 hours per session. For datasets containing tens to hundreds of videos, this should be more than enough time to complete the process before disconnection.
+1.  **CPU Processing**: MediaPipe Holistic for Python is currently optimized for CPU. Running on Colab is still significantly faster than most local setups due to optimized virtualization.
+2.  **Persistent Storage**: Since you are working directly within the mounted `/content/drive` path, all outputs in `data/pickle/` and `data/excel/` are saved in real-time. You won't lose data if the session expires.
+3.  **Large Datasets**: If you have thousands of videos, Colab may still take several hours. The free tier allows up to **12 hours** of execution.
+4.  **Avoid Disconnection**: Keep the browser tab active. You can occasionally interact with the notebook (e.g., creating a new cell) to prevent the "Idle" timeout.
+
+---
+
+## 📄 License
+This project is licensed under the MIT License.

@@ -2,7 +2,7 @@
 Core Pipeline Module
 
 This module orchestrates the extraction of keypoints from video files
-and dispatches the results to various converters and visualizers.
+and dispatches the results to various converters.
 """
 
 import os
@@ -10,7 +10,8 @@ from pathlib import Path
 import numpy as np
 import cv2
 
-from src.config import PICKLE_DIR
+import pandas as pd
+from src.config import PICKLE_DIR, PROJECT_ROOT
 from src.core.metadata import parse_video_id
 from src.extractor.holistic_86 import Holistic86Extractor
 from src.converter.to_pickle import PickleConverter
@@ -41,9 +42,42 @@ class SkeletonPipeline:
         self.save_excel    = save_excel
         self.last_pickle_sample_id = None
         self.last_pickle_path = None
-        self.pickle_filename = pickle_filename
+        self.pickle_filename = pickle_filename or "pose_bisindo"
+
+        # Load split mapping for train_dev / test separation
+        self.split_mapping = self._load_split_mapping()
 
         os.makedirs(PICKLE_DIR, exist_ok=True)
+
+    def _load_split_mapping(self):
+        """
+        Loads the video ID to split mapping from the splitting_data results.
+        """
+        split_dir = os.path.join(PROJECT_ROOT, "splitting_data", "results")
+        mapping = {}
+        
+        # Combine train and dev into 'train_dev', keep 'test' separate
+        splits = {
+            'train.csv': 'train_dev',
+            'dev.csv': 'train_dev',
+            'test.csv': 'test'
+        }
+        
+        for csv_file, target_split in splits.items():
+            csv_path = os.path.join(split_dir, csv_file)
+            if os.path.exists(csv_path):
+                try:
+                    # Use sep='|' as configured in the splitting notebook
+                    df = pd.read_csv(csv_path, sep='|')
+                    if 'id' in df.columns:
+                        for vid in df['id']:
+                            mapping[str(vid).strip()] = target_split
+                except Exception as e:
+                    print(f"[WARN] Failed to read split file {csv_file}: {e}")
+            else:
+                print(f"[WARN] Split file not found: {csv_path}")
+        
+        return mapping
 
     def process_video(self, video_path: str, label: int = None, output_subpath: str = "") -> np.ndarray:
         """
@@ -77,12 +111,16 @@ class SkeletonPipeline:
         print(f"       Frames extracted: {keypoints.shape[0]}")
 
         if self.save_pickle:
+            # Determine target split (train_dev or test)
+            split_suffix = self.split_mapping.get(video_id, "others")
+            target_filename = f"{self.pickle_filename}_{split_suffix}.pkl"
+
             sample_id, pickle_path = self.pickle_conv.save(
                 keypoints,
                 video_id,
                 label,
                 output_subpath,
-                filename=self.pickle_filename,
+                filename=target_filename,
             )
             self.last_pickle_sample_id = sample_id
             self.last_pickle_path = pickle_path

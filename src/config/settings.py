@@ -2,7 +2,7 @@
 Settings Configurations
 
 This module contains application-wide settings such as MediaPipe parameters,
-keypoint constants, output switches, and visualization configurations.
+keypoint constants, and output switches.
 """
 
 # ==========================================================

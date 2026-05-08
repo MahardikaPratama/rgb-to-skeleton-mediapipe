@@ -22,17 +22,15 @@ if __name__ == "__main__":
     start_time = time.time()
 
     pipeline = SkeletonPipeline(
-        save_pickle     = not args.no_pickle,
-        save_excel      = not args.no_excel,
         pickle_filename = args.pickle_name,
     )
 
     input_path = args.input
 
     if os.path.isdir(input_path):
-        pipeline.process_folder(input_path, label=args.label)
+        pipeline.process_folder(input_path)
     elif os.path.isfile(input_path):
-        pipeline.process_video(input_path, label=args.label)
+        pipeline.process_video(input_path)
     else:
         raise FileNotFoundError(f"Input path does not exist: {input_path}")
 

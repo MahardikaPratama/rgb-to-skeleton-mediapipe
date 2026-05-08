@@ -9,60 +9,109 @@ A standardized, high-performance preprocessing pipeline designed to convert **BI
 
 ## 📑 Table of Contents
 - [📖 Project Overview](#-project-overview)
+- [⚙️ Functional Requirements](#%EF%B8%8F-functional-requirements)
 - [🔄 Data Simulation Flow](#-data-simulation-flow)
+- [🧪 Simulation Example (E2E)](#-simulation-example-e2e)
 - [📍 Keypoint Layout (86 Points)](#-keypoint-layout-86-points)
 - [📂 Project Structure](#-project-structure)
 - [🛠️ Installation & Setup](#-installation--setup)
 - [💻 Usage](#-usage)
-- [📝 Technical Notes](#-technical-notes)
 - [📄 License](#-license)
 
 ---
 
 ## 📖 Project Overview
 
-This pipeline automates the transformation of raw sign language videos into deep learning-ready datasets. It features a modular architecture following the **Single Responsibility Principle (SRP)**, ensuring scalability and ease of integration into academic research or industrial applications.
+This pipeline automates the transformation of raw sign language videos into deep learning-ready datasets. It follows the **Single Responsibility Principle (SRP)**, ensuring scalability and ease of integration into academic research.
 
 ### ✨ Key Features
 *   **86-Keypoint Extraction**: Captures hands, mouth, and upper body pose.
-*   **Automated Data Splitting**: Synchronized with `splitting_data` results to generate dedicated `train_dev` and `test` datasets.
-*   **Multi-Format Export**: Generates serialized Pickle files for training and subject-specific Excel files for analytical verification.
-*   **Resolution Agnostic**: Handles varying video aspect ratios through normalized coordinate extraction.
+*   **Automated Data Splitting**: Synchronized with `splitting_data` results to generate `train_dev` and `test` datasets.
+*   **Multi-Format Export**: Generates serialized Pickle files and subject-specific Excel files.
+
+---
+
+## ⚙️ Functional Requirements
+
+The system is designed to meet the following technical requirements for robust data preprocessing:
+
+| ID | Requirement | Description |
+| :--- | :--- | :--- |
+| **FR-01** | **Holistic Extraction** | Extract 86 specific landmarks using MediaPipe Holistic API. |
+| **FR-02** | **Coordinate Normalization** | Convert pixel coordinates to normalized values (0.0 to 1.0). |
+| **FR-03** | **Metadata Mapping** | Map raw filenames and folder structures to standardized `Pxx_Sxxx_Rxx` IDs. |
+| **FR-04** | **Set Separation** | Automatically route data to `train_dev` or `test` sets based on CSV split maps. |
+| **FR-05** | **Rotation Handling** | Respect video metadata to handle portrait/landscape orientations correctly. |
+| **FR-06** | **Analytical Export** | Generate per-subject Excel workbooks for manual coordinate verification. |
 
 ---
 
 ## 🔄 Data Simulation Flow
 
-The pipeline operates in three distinct stages, transforming raw video pixels into structured numerical data.
+The pipeline operates in three distinct stages:
 
 ### 🏗️ Stage 1: Metadata Orchestration
-*   **Input**: Directory of RGB videos and Splitting CSVs (`train.csv`, `dev.csv`, `test.csv`).
-*   **Process**: 
-    *   Path parsing to extract `SignerID`, `SentenceID`, and `RepetitionID`.
-    *   Standardization of IDs into `Pxx_Sxxx_Rxx` format.
-    *   Lookup in the splitting map to determine the target dataset set (`train_dev` or `test`).
+*   **Input**: Video directory + `splitting_data/results/*.csv`.
+*   **Process**: Path parsing, ID standardization, and set assignment lookup.
 *   **Output**: Metadata-enriched processing queue.
 
 ### 🧬 Stage 2: Feature Extraction
-*   **Input**: Individual RGB frames.
-*   **Process**:
-    *   Conversion to RGB space and MediaPipe Holistic model inference.
-    *   Extraction of 86 specific landmarks across 4 regions.
-    *   Coordinate normalization (0.0 - 1.0) and dimensionality reduction (X, Y).
-*   **Output**: Temporal Numpy array of shape `(Frames, 86, 2)`.
+*   **Input**: RGB Video Frames.
+*   **Process**: Model inference, landmark selection (GL, GR, GM, GP), and XY normalization.
+*   **Output**: Temporal Numpy array `(T, 86, 2)`.
 
-### 💾 Stage 3: Data Serialization & Export
+### 💾 Stage 3: Data Serialization
 *   **Input**: Extracted Numpy keypoints.
-*   **Process**:
-    *   **Pickle Export**: Appending data to either `_train_dev.pkl` or `_test.pkl` based on split metadata.
-    *   **Excel Export**: Mapping coordinates to tabular format and saving to subject-specific workbooks (e.g., `P01.xlsx`).
-*   **Output**: Serialized datasets in `data/pickle/` and analytical reports in `data/excel/`.
+*   **Process**: Dictionary aggregation and Pickle serialization / Excel tabularization.
+*   **Output**: `.pkl` and `.xlsx` files in the `data/` directory.
+
+---
+
+## 🧪 Simulation Example (E2E)
+
+This example demonstrates how a single raw video is transformed into structured outputs.
+
+### 1. Initial Input
+*   **Video File**: `data/raw/AYAH SAMA IBU MANA/ACHMAD_AYAH SAMA IBU MANA_01.mp4`
+*   **Split Config (`splitting_data/results/train.csv`)**:
+    ```text
+    id|gloss
+    P01_S001_R01|AYAH SAMA IBU MANA
+    ```
+
+### 2. Execution Command
+```bash
+python main.py --input data/raw/ --pickle-name pose_bisindo
+```
+
+### 3. Internal Processing
+*   **ID Mapping**: `ACHMAD` → `P01`, `AYAH SAMA IBU MANA` → `S001`, `01` → `R01`.
+*   **Resulting ID**: `P01_S001_R01`.
+*   **Set Lookup**: Found in `train.csv` → Target: `train_dev`.
+
+### 4. Final Outputs
+#### 📁 Pickle Output (`data/pickle/pose_bisindo_train_dev.pkl`)
+The data is appended to a dictionary:
+```python
+{
+    "P01_S001_R01": {
+        "keypoints": array([[0.51, 0.23], [0.52, 0.24], ...]) # Shape (T, 86, 2)
+    },
+    ...
+}
+```
+
+#### 📊 Excel Output (`data/excel/P01.xlsx`)
+A sheet named `P01_S001_R01` is created with the following structure:
+| kode_video | frame | keypoint_id | x | y |
+| :--- | :--- | :--- | :--- | :--- |
+| P01_S001_R01 | 0 | 0 | 0.5123 | 0.2345 |
+| P01_S001_R01 | 0 | 1 | 0.5145 | 0.2367 |
+| ... | ... | ... | ... | ... |
 
 ---
 
 ## 📍 Keypoint Layout (86 Points)
-
-The pipeline adheres to the standardized 86-keypoint layout, ensuring compatibility with state-of-the-art SLR models.
 
 | Region | Code | Index | Count | Description |
 | :--- | :--- | :--- | :--- | :--- |
@@ -77,67 +126,35 @@ The pipeline adheres to the standardized 86-keypoint layout, ensuring compatibil
 
 ```text
 rgb-to-skeleton-mediapipe/
-├── main.py                 # Entry point: Orchestrates the entire pipeline
-├── splitting_data/         # Results from data splitting scripts
-│   └── results/            # train.csv, dev.csv, test.csv
+├── main.py                 # Entry point
+├── splitting_data/         # Data splitting results
 ├── src/
-│   ├── config/             # Configuration: Paths, Settings, Mappings
-│   ├── core/               # Core Logic: Pipeline orchestration, CLI, Metadata
-│   ├── extractor/          # Extraction: MediaPipe Holistic implementation
-│   ├── converter/          # Conversion: Pickle and Excel exporters
-│   └── processor/          # Processing: Keypoint validation and selection
-├── data/
-│   ├── raw/                # Input: Place raw RGB videos here
-│   ├── pickle/             # Output: pose_bisindo_train_dev.pkl, pose_bisindo_test.pkl
-│   └── excel/              # Output: Pxx.xlsx (Subject-specific analytics)
-└── notebooks/              # Analysis: Data distribution and augmentation tests
+│   ├── config/             # Paths, Settings, Mappings
+│   ├── core/               # Pipeline, CLI, Metadata
+│   ├── extractor/          # MediaPipe Holistic
+│   └── converter/          # Pickle & Excel exporters
+└── data/                   # Raw videos and extracted outputs
 ```
 
 ---
 
 ## 🛠️ Installation & Setup
-
-### 1. Prerequisites
-- **Python 3.10** (Highly Recommended)
-- **Conda** or **venv**
-
-### 2. Environment Setup
 ```bash
-# Clone the repository
 git clone https://github.com/MahardikaPratama/rgb-to-skeleton-mediapipe.git
 cd rgb-to-skeleton-mediapipe
-
-# Create and activate environment
 conda env create -f environment.yml
 conda activate rgb-skeleton
+pip install -r requirements.txt
 ```
 
 ---
 
 ## 💻 Usage
-
-The pipeline is operated via a simple Command Line Interface (CLI).
-
-### 🚀 Basic Command
 ```bash
-python main.py --input data/raw/ --pickle-name pose_bisindo
+python main.py --input <path_to_videos> --pickle-name <name>
 ```
-
-### ⚙️ CLI Arguments
-| Argument | Default | Description |
-| :--- | :--- | :--- |
-| `--input`, `-i` | (Required) | Path to a single video file or a folder of videos. |
-| `--pickle-name` | `pose_bisindo` | Base name for the output pickle files. |
-
----
-
-## 📝 Technical Notes
-
-- **MediaPipe Version**: Ensure `mediapipe <= 0.10.14` for consistent Holistic landmark detection.
-- **Coordinate System**: All output coordinates are normalized relative to frame width and height.
-- **Data Splitting**: The pipeline automatically detects the set (`train_dev` or `test`) for each video based on the `video_id` found in `splitting_data/results/*.csv`.
 
 ---
 
 ## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License.

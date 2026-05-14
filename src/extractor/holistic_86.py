@@ -13,34 +13,24 @@ All regions are selected sequentially (landmark 0 to N-1).
 Counts are derived from the range constants in src/config.py.
 """
 
+
 import cv2
 import mediapipe as mp
 import numpy as np
 
-from src.config import (
-    MEDIAPIPE_CONFIG,
-    TOTAL_KEYPOINTS,
-    USE_3D_COORDINATES,
-    LEFT_HAND_RANGE,
-    RIGHT_HAND_RANGE,
-    MOUTH_RANGE,
-    POSE_RANGE,
+from src.config import MEDIAPIPE_CONFIG, TOTAL_KEYPOINTS, USE_3D_COORDINATES
+from src.config.keypoint_layout import (
+    LEFT_HAND_SELECTION,
+    RIGHT_HAND_SELECTION,
+    MOUTH_SELECTION,
+    POSE_SELECTION,
 )
+from src.processor.keypoint_selector import KeypointSelector
+from src.utils.exceptions import ExtractionException, ValidationException
+from src.utils.logger import get_logger
 
-# Number of landmarks to take per region (derived from config ranges)
-_N_LEFT_HAND  = LEFT_HAND_RANGE[1]  - LEFT_HAND_RANGE[0]   # 21
-_N_RIGHT_HAND = RIGHT_HAND_RANGE[1] - RIGHT_HAND_RANGE[0]  # 21
-_N_POSE       = POSE_RANGE[1]       - POSE_RANGE[0]         # 25
 
-# Mouth: specific landmark indices from MediaPipe 468-point face mesh.
-# Landmarks 0-18 (sequential) are nose/eye area — NOT the lip region.
-# These specific indices select the outer and inner lip contour.
-_MOUTH_SELECTED = [
-    # Outer lip (10 points, clockwise)
-    61, 185, 40, 39, 37, 0, 267, 269, 270, 409,
-    # Inner lip (9 points)
-    78, 191, 80, 81, 82, 13, 312, 311, 308,
-]  # total: 19
+logger = get_logger(__name__)
 
 
 class Holistic86Extractor:
@@ -48,37 +38,7 @@ class Holistic86Extractor:
         self.mp_holistic = mp.solutions.holistic
         self.model = self.mp_holistic.Holistic(**MEDIAPIPE_CONFIG)
         self._dims = 3 if USE_3D_COORDINATES else 2
-
-    def _landmarks_to_array(self, landmarks, selection):
-        """
-        Convert mediapipe landmarks to numpy array.
-
-        Parameters
-        ----------
-        landmarks : mediapipe landmark object or None
-        selection : int or list[int]
-            - int  : take the first N landmarks sequentially (0 to N-1)
-            - list : take landmarks at these specific indices
-
-        Returns
-        -------
-        list of [x, y, z] or [x, y]
-        """
-        indices = range(selection) if isinstance(selection, int) else selection
-        dims    = self._dims
-        empty   = [0.0] * dims
-
-        if landmarks is None:
-            return [list(empty) for _ in indices]
-
-        output = []
-        for idx in indices:
-            lm = landmarks.landmark[idx]
-            if dims == 3:
-                output.append([lm.x, lm.y, lm.z])
-            else:
-                output.append([lm.x, lm.y])
-        return output
+        self.selector = KeypointSelector(use_3d=USE_3D_COORDINATES)
 
     def extract_frame(self, frame):
         """
@@ -98,33 +58,15 @@ class Holistic86Extractor:
 
         keypoints = []
 
-        # ---- LEFT HAND (GL) — output indices 0–20 ----
-        keypoints.extend(self._landmarks_to_array(
-            results.left_hand_landmarks, _N_LEFT_HAND
-        ))
+        keypoints.extend(self.selector.select_landmarks(results.left_hand_landmarks, LEFT_HAND_SELECTION))
+        keypoints.extend(self.selector.select_landmarks(results.right_hand_landmarks, RIGHT_HAND_SELECTION))
+        keypoints.extend(self.selector.select_landmarks(results.face_landmarks, MOUTH_SELECTION))
+        keypoints.extend(self.selector.select_landmarks(results.pose_landmarks, POSE_SELECTION))
 
-        # ---- RIGHT HAND (GR) — output indices 21–41 ----
-        keypoints.extend(self._landmarks_to_array(
-            results.right_hand_landmarks, _N_RIGHT_HAND
-        ))
+        keypoints = np.array(keypoints, dtype=float)
 
-        # ---- MOUTH (GM) — output indices 42–60 ----
-        # Uses specific lip landmark indices (not sequential) because
-        # face mesh landmark order 0-18 maps to nose/eye area, not lips.
-        keypoints.extend(self._landmarks_to_array(
-            results.face_landmarks, _MOUTH_SELECTED
-        ))
-
-        # ---- POSE (GP) — output indices 61–85 ----
-        keypoints.extend(self._landmarks_to_array(
-            results.pose_landmarks, _N_POSE
-        ))
-
-        keypoints = np.array(keypoints)
-
-        assert keypoints.shape[0] == TOTAL_KEYPOINTS, (
-            f"Expected {TOTAL_KEYPOINTS} keypoints, got {keypoints.shape[0]}"
-        )
+        if keypoints.shape[0] != TOTAL_KEYPOINTS:
+            raise ValidationException(f"Expected {TOTAL_KEYPOINTS} keypoints, got {keypoints.shape[0]}")
 
         return keypoints
 
@@ -140,22 +82,27 @@ class Holistic86Extractor:
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"Cannot open video: {video_path}")
+            raise ExtractionException(f"Cannot open video: {video_path}")
 
-        # Respect rotation metadata (e.g. videos shot on phone with portrait orientation)
-        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+        # Respect rotation metadata when possible
+        try:
+            cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+        except Exception:
+            logger.debug("Video capture does not support ORIENTATION_AUTO on this platform")
 
         all_frames = []
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            all_frames.append(self.extract_frame(frame))
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                all_frames.append(self.extract_frame(frame))
 
-        cap.release()
+            if len(all_frames) == 0:
+                raise ExtractionException(f"Video has no readable frames: {video_path}")
 
-        if len(all_frames) == 0:
-            raise ValueError(f"Video has no readable frames: {video_path}")
+            return np.stack(all_frames)
 
-        return np.stack(all_frames)
+        finally:
+            cap.release()

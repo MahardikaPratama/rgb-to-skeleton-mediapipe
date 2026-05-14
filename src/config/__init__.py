@@ -30,3 +30,42 @@ from .mappings import (
     SENTENCE_MAP,
     SENTENCE_FOLDERS,
 )
+
+# New selection lists for processors
+from .keypoint_layout import (
+    LEFT_HAND_SELECTION,
+    RIGHT_HAND_SELECTION,
+    MOUTH_SELECTION,
+    POSE_SELECTION,
+    KEYPOINT_SELECTIONS,
+)
+
+__all__ = [
+    # paths
+    "PROJECT_ROOT",
+    "DATA_DIR",
+    "RAW_VIDEO_DIR",
+    "PICKLE_DIR",
+    "EXCEL_DIR",
+    # settings
+    "MEDIAPIPE_CONFIG",
+    "TOTAL_KEYPOINTS",
+    "USE_3D_COORDINATES",
+    "SAVE_PICKLE",
+    "SAVE_EXCEL",
+    # ranges (backwards compat)
+    "LEFT_HAND_RANGE",
+    "RIGHT_HAND_RANGE",
+    "MOUTH_RANGE",
+    "POSE_RANGE",
+    # selection lists
+    "LEFT_HAND_SELECTION",
+    "RIGHT_HAND_SELECTION",
+    "MOUTH_SELECTION",
+    "POSE_SELECTION",
+    "KEYPOINT_SELECTIONS",
+    # mappings
+    "PERSON_MAP",
+    "SENTENCE_MAP",
+    "SENTENCE_FOLDERS",
+]

@@ -322,11 +322,11 @@ def main() -> int:
     si_min_df = build_si_dataframe(dataframe, "P07", ["P04", "P05"], args.seed)
     logger.info("SI split sizes -> P06: %s, P07: %s", len(si_maj_df), len(si_min_df))
 
-    write_split_files(DEFAULT_SD_DIR, "train", train_df, "sd_train_list.txt")
-    write_split_files(DEFAULT_SD_DIR, "dev", dev_df, "sd_dev_list.txt")
-    write_split_files(DEFAULT_SD_DIR, "test", test_df, "sd_test_list.txt")
-    write_split_files(DEFAULT_SI_MAJ_DIR, "test", si_maj_df, "si-maj_test_list.txt")
-    write_split_files(DEFAULT_SI_MIN_DIR, "test", si_min_df, "si-min_test_list.txt")
+    write_split_files(DEFAULT_SD_DIR, "train", train_df, "train_list.txt")
+    write_split_files(DEFAULT_SD_DIR, "dev", dev_df, "dev_list.txt")
+    write_split_files(DEFAULT_SD_DIR, "test", test_df, "test_list.txt")
+    write_split_files(DEFAULT_SI_MAJ_DIR, "test", si_maj_df, "test_list.txt")
+    write_split_files(DEFAULT_SI_MIN_DIR, "test", si_min_df, "test_list.txt")
 
     logger.info("Outputs written to %s, %s, and %s", DEFAULT_SD_DIR, DEFAULT_SI_MAJ_DIR, DEFAULT_SI_MIN_DIR)
     return 0

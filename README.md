@@ -124,27 +124,86 @@ A sheet named `P01_S001_R01` is created with the following structure:
 
 ## 📂 Project Structure
 
-```text
+This repository has been refactored: most runtime logic resides under `src/`.
+Refer to `CODING_STANDARDS.md` for architecture, conventions, and development
+guidelines. The high-level layout is:
+
+```
 rgb-to-skeleton-mediapipe/
-├── main.py                 # Entry point
-├── splitting_data/         # Data splitting results
-├── src/
-│   ├── config/             # Paths, Settings, Mappings
-│   ├── core/               # Pipeline, CLI, Metadata
-│   ├── extractor/          # MediaPipe Holistic
-│   └── converter/          # Pickle & Excel exporters
-└── data/                   # Raw videos and extracted outputs
+├── main.py                 # CLI entrypoint (orchestrates pipeline)
+├── splitting_data/         # Data split utilities and results (CSV, lists)
+│   ├── data_splitting.py   # Create SD / SI split CSVs and lists
+│   └── split_pose_pickle.py# Filter master pickle using split CSVs
+├── src/                    # Core library (importable package)
+│   ├── config/             # Configuration, paths, mappings
+│   ├── core/               # Pipeline orchestration, CLI, metadata
+│   ├── extractor/          # MediaPipe Holistic extractor
+│   ├── processor/          # Keypoint selection and validators
+│   ├── converter/          # Pickle / Excel converters
+│   └── utils/              # Logging, exceptions, helpers
+└── data/                   # Raw inputs and serialized outputs
 ```
 
 ---
 
 ## 🛠️ Installation & Setup
+
+Prerequisite: this project expects a working Conda environment. We recommend
+installing Miniconda (lightweight Conda distribution). Follow the official
+installation guide for your platform:
+
+https://www.anaconda.com/docs/getting-started/miniconda/install/overview
+
+After Miniconda is installed, run the following commands to set up the
+project environment and install dependencies:
+
 ```bash
 git clone https://github.com/MahardikaPratama/rgb-to-skeleton-mediapipe.git
 cd rgb-to-skeleton-mediapipe
+
+# Create the Conda environment from the provided spec
 conda env create -f environment.yml
+
+# Activate the created environment
 conda activate rgb-skeleton
+
+# Install any additional pip-only packages (optional)
 pip install -r requirements.txt
+```
+
+Notes:
+
+- Use the `conda` commands above in a shell where Miniconda is available.
+- If you prefer `mamba`, it can be used as a faster drop-in replacement for
+    the `conda env create` step.
+
+## Developer Guide
+
+- Read `CODING_STANDARDS.md` for architecture decisions, coding conventions,
+    type and docstring requirements, and testing guidance. This document is the
+    authoritative source for contributions and code reviews.
+- Use the `src/` package when importing library components in scripts or tests.
+    Example:
+
+```python
+from src.core.pipeline import SkeletonPipeline
+```
+
+- The project enforces strict typing and Google-style docstrings. Run the
+    repository checks described in `CODING_STANDARDS.md` before submitting PRs.
+
+## Quick Commands
+
+- Generate SD / SI CSVs and list files:
+
+```bash
+python splitting_data/data_splitting.py --seed 42
+```
+
+- Produce filtered pickle files from the CSV splits:
+
+```bash
+python splitting_data/split_pose_pickle.py --seed 42
 ```
 
 ---

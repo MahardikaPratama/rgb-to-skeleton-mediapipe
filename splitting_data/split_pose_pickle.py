@@ -148,7 +148,16 @@ def create_dummy_speaker(
         if new_id in used_keys:
             logger.debug("Skipping creation of %s because it already exists", new_id)
             continue
-        donor = random.choice(donors)
+            
+        sentence_identifier = f"_S{i:03}_"
+        valid_donors = [d for d in donors if sentence_identifier in d]
+        
+        if not valid_donors:
+            raise exceptions.ConfigurationException(
+                f"No donor samples found for sentence {i:03} from prefixes: {donor_prefixes}"
+            )
+            
+        donor = random.choice(valid_donors)
         result[new_id] = copy.deepcopy(data[donor])
 
     return result

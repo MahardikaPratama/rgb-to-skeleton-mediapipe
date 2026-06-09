@@ -111,8 +111,11 @@ class SkeletonPipeline:
 
         if self.save_pickle:
             # Determine target split (train_dev or test)
-            split_suffix = self.split_mapping.get(video_id, "others")
-            target_filename = f"{self.pickle_filename}_{split_suffix}.pkl"
+            split_suffix = self.split_mapping.get(video_id)
+            if split_suffix:
+                target_filename = f"{self.pickle_filename}_{split_suffix}.pkl"
+            else:
+                target_filename = f"{self.pickle_filename}.pkl"
 
             sample_id, pickle_path = self.pickle_conv.save(
                 keypoints,

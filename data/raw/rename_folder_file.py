@@ -217,10 +217,10 @@ def parse_args() -> argparse.Namespace:
 
 	parser = argparse.ArgumentParser(description="Rename BISINDO raw dataset folders and videos.")
 	parser.add_argument(
-		"--root",
+		"--input",
 		type=Path,
 		default=Path(__file__).resolve().parent,
-		help="Root folder that contains the legacy sentence folders.",
+		help="Input folder that contains the legacy sentence folders (e.g. 'raw' or 'raw_add').",
 	)
 	parser.add_argument(
 		"--dry-run",
@@ -235,7 +235,16 @@ def main() -> None:
 
 	args = parse_args()
 	logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-	rename_dataset(args.root, dry_run=args.dry_run)
+
+	target_dir = args.input
+	if not target_dir.exists():
+		# Fallback to checking inside the data directory if given a folder name like "raw_add"
+		data_dir = Path(__file__).resolve().parent.parent
+		fallback_dir = data_dir / target_dir
+		if fallback_dir.exists():
+			target_dir = fallback_dir
+
+	rename_dataset(target_dir, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

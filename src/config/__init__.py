@@ -1,8 +1,8 @@
 """
 Configuration Package
 
-This package consolidates directory paths, system settings, and metadata mappings.
-All constants are re-exported here for backwards compatibility and ease of import.
+This package consolidates directory paths, system settings, and keypoint layout
+definitions used by the RGB-to-skeleton pipeline.
 """
 
 from .paths import (
@@ -23,12 +23,6 @@ from .settings import (
     USE_3D_COORDINATES,
     SAVE_PICKLE,
     SAVE_EXCEL,
-)
-
-from .mappings import (
-    PERSON_MAP,
-    SENTENCE_MAP,
-    SENTENCE_FOLDERS,
 )
 
 # New selection lists for processors
@@ -64,8 +58,4 @@ __all__ = [
     "MOUTH_SELECTION",
     "POSE_SELECTION",
     "KEYPOINT_SELECTIONS",
-    # mappings
-    "PERSON_MAP",
-    "SENTENCE_MAP",
-    "SENTENCE_FOLDERS",
 ]

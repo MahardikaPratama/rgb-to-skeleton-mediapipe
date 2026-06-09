@@ -28,7 +28,7 @@ from src.utils import exceptions
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT_PICKLE = PROJECT_ROOT / "data" / "pickle" / "pose_bisindo.pkl"
-DEFAULT_RESULTS_DIR = PROJECT_ROOT / "splitting_data" / "results"
+DEFAULT_RESULTS_DIR = PROJECT_ROOT / "splitting_data" / "results" / "SD"
 DEFAULT_TRAIN_DEV_OUTPUT = PROJECT_ROOT / "data" / "pickle" / "pose_bisindo_train_dev_sd.pkl"
 DEFAULT_TEST_OUTPUT = PROJECT_ROOT / "data" / "pickle" / "pose_bisindo_test_sd.pkl"
 DEFAULT_TEST_SI_MAJ_OUTPUT = PROJECT_ROOT / "data" / "pickle" / "pose_bisindo_test_si-maj.pkl"
@@ -150,11 +150,14 @@ def create_dummy_speaker(
             continue
             
         sentence_identifier = f"_S{i:03}_"
-        valid_donors = [d for d in donors if sentence_identifier in d]
+        valid_donors = [
+            d for d in donors 
+            if sentence_identifier in d and (d.endswith("_R04") or d.endswith("_R05"))
+        ]
         
         if not valid_donors:
             raise exceptions.ConfigurationException(
-                f"No donor samples found for sentence {i:03} from prefixes: {donor_prefixes}"
+                f"No donor samples found for sentence {i:03} with repetition R04/R05 from prefixes: {donor_prefixes}"
             )
             
         donor = random.choice(valid_donors)

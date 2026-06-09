@@ -127,6 +127,20 @@ def parse_sample_id(sample_id: str) -> Tuple[str, str, int]:
     return signer, sentence_id, int(repetition_digits)
 
 
+def normalize_sentence(value: object) -> str:
+    """Normalize a sentence-like value for stable Excel lookups."""
+    return " ".join(str(value).strip().upper().split())
+
+
+def sentence_sort_order(sentence_id: str) -> int:
+    """Return a numeric sort order derived from an Sxx/Sxxx sentence id."""
+
+    digits = "".join(character for character in str(sentence_id) if character.isdigit())
+    if not digits:
+        return 999
+    return int(digits)
+
+
 def load_source_dataframe(
     excel_path: Path,
     pickle_path: Path,
@@ -157,13 +171,14 @@ def load_source_dataframe(
             f"Missing required Excel columns: {missing_columns}. Available columns: {list(source_df.columns)}"
         )
 
-    mapping: Dict[str, str] = {}
-    mapping_text: Dict[str, str] = {}
-    for _, row in source_df.dropna(subset=[id_column, gloss_column]).iterrows():
-        key = str(row[id_column]).strip()
-        mapping[key] = str(row[gloss_column]).strip()
-        if pd.notna(row[text_column]):
-            mapping_text[key] = str(row[text_column]).strip()
+    gloss_lookup: Dict[str, str] = {}
+    text_lookup: Dict[str, str] = {}
+    for _, row in source_df.dropna(subset=[id_column]).iterrows():
+        sentence_id = normalize_sentence(row[id_column])
+        if not sentence_id:
+            continue
+        gloss_lookup[sentence_id] = str(row[gloss_column]).strip() if pd.notna(row[gloss_column]) else ""
+        text_lookup[sentence_id] = str(row[text_column]).strip() if pd.notna(row[text_column]) else ""
 
     if not pickle_path.exists():
         raise FileNotFoundError(f"Pickle file not found: {pickle_path}")
@@ -180,8 +195,8 @@ def load_source_dataframe(
         rows.append(
             {
                 "id": sample_id,
-                "gloss": mapping.get(sentence_id, mapping.get(sample_id, sample_id)),
-                "text": mapping_text.get(sentence_id, mapping_text.get(sample_id, "")),
+                "gloss": gloss_lookup.get(sentence_id, ""),
+                "text": text_lookup.get(sentence_id, ""),
                 "signer": signer,
                 "sentence_id": sentence_id,
                 "repetition": repetition,
@@ -193,7 +208,8 @@ def load_source_dataframe(
         raise exceptions.ValidationException("No valid rows were loaded from the Excel file.")
 
     dataframe["repetition"] = dataframe["repetition"].astype(int)
-    return dataframe.sort_values(["gloss", "repetition", "id"]).reset_index(drop=True)
+    dataframe["sentence_order"] = dataframe["sentence_id"].map(sentence_sort_order).astype(int)
+    return dataframe.sort_values(["sentence_order", "repetition", "id"]).drop(columns=["sentence_order"]).reset_index(drop=True)
 
 
 def split_sd_dataframe(dataframe: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:

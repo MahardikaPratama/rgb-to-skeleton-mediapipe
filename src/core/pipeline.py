@@ -12,7 +12,6 @@ import cv2
 
 import pandas as pd
 from src.config import PICKLE_DIR, PROJECT_ROOT
-from src.core.metadata import parse_video_id
 from src.extractor.holistic_86 import Holistic86Extractor
 from src.converter.to_pickle import PickleConverter
 from src.converter.to_excel import ExcelConverter
@@ -98,7 +97,7 @@ class SkeletonPipeline:
             raise FileNotFoundError(f"Video not found: {video_path}")
 
         path_obj = Path(video_path)
-        video_id = parse_video_id(path_obj)
+        video_id = path_obj.stem
         
         print(f"\n[INFO] Processing: {path_obj.name} -> {video_id} (Subpath: {output_subpath or '.'})")
 

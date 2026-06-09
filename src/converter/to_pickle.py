@@ -63,15 +63,15 @@ class PickleConverter:
 
         The structure of the Pickle dictionary maintains the format:
         {
-            "P01_S001_R01": {"keypoints": np.ndarray(T, 86, 2)},
-            "P01_S001_R02": {"keypoints": np.ndarray(T, 86, 2)},
+            "P1_S01_R1": {"keypoints": np.ndarray(T, 86, 2)},
+            "P1_S01_R2": {"keypoints": np.ndarray(T, 86, 2)},
             ...
         }
 
         Args:
             keypoints (np.ndarray): The keypoints array of shape (T, 86, C). 
                                     Only the (x, y) coordinates are saved.
-            video_id (str): The standardized ID representing the video (e.g., P01_S001_R01).
+            video_id (str): The filename-based key representing the video (e.g., P1_S01_R1).
             label (int, optional): An optional integer class label. Defaults to None.
             output_subpath (str, optional): Optional sub-path. Defaults to "".
             filename (str, optional): Custom filename for the dataset Pickle file.
@@ -99,7 +99,7 @@ class PickleConverter:
         else:
             data = {}
 
-        # The pipeline now passes the fully standardized video_name (e.g. P01_S001_R01)
+        # The pipeline passes the renamed video stem directly (e.g. P1_S01_R1)
         sample_id = video_id
 
         data[sample_id] = {

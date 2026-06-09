@@ -17,8 +17,8 @@ from .settings import (
 )
 
 # Convert ranges to explicit selections when needed by processors
-LEFT_HAND_SELECTION: List[int] = list(range(LEFT_HAND_RANGE[0], LEFT_HAND_RANGE[1]))
-RIGHT_HAND_SELECTION: List[int] = list(range(RIGHT_HAND_RANGE[0], RIGHT_HAND_RANGE[1]))
+LEFT_HAND_SELECTION: List[int] = list(range(21))
+RIGHT_HAND_SELECTION: List[int] = list(range(21))
 
 # Mouth selection uses specific 468-face-mesh indices targeting lips
 # These indices were chosen for the Isharah specification and are stable
@@ -28,7 +28,7 @@ MOUTH_SELECTION: List[int] = [
     78, 191, 80, 81, 82, 13, 312, 311, 308,      # inner lip
 ]
 
-POSE_SELECTION: List[int] = list(range(POSE_RANGE[0], POSE_RANGE[1]))
+POSE_SELECTION: List[int] = list(range(25))
 
 KEYPOINT_RANGES: Dict[str, Tuple[int, int]] = {
     "left_hand": LEFT_HAND_RANGE,

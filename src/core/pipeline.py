@@ -6,6 +6,8 @@ and dispatches the results to various converters.
 """
 
 import os
+import time
+from datetime import timedelta
 from pathlib import Path
 import numpy as np
 import cv2
@@ -42,11 +44,17 @@ class SkeletonPipeline:
         self.last_pickle_sample_id = None
         self.last_pickle_path = None
         self.pickle_filename = pickle_filename or "pose_bisindo"
+        self.start_time = time.time()
 
         # Load split mapping for train_dev / test separation
         self.split_mapping = self._load_split_mapping()
 
         os.makedirs(PICKLE_DIR, exist_ok=True)
+
+    def _elapsed(self) -> str:
+        """Returns the elapsed time since pipeline initialization formatted as HH:MM:SS."""
+        elapsed = int(time.time() - self.start_time)
+        return str(timedelta(seconds=elapsed))
 
     def _load_split_mapping(self):
         """
@@ -72,9 +80,9 @@ class SkeletonPipeline:
                         for vid in df['id']:
                             mapping[str(vid).strip()] = target_split
                 except Exception as e:
-                    print(f"[WARN] Failed to read split file {csv_file}: {e}")
+                    print(f"[{self._elapsed()}] [WARN] Failed to read split file {csv_file}: {e}")
             else:
-                print(f"[WARN] Split file not found: {csv_path}")
+                print(f"[{self._elapsed()}] [WARN] Split file not found: {csv_path}")
         
         return mapping
 
@@ -99,7 +107,7 @@ class SkeletonPipeline:
         path_obj = Path(video_path)
         video_id = path_obj.stem
         
-        print(f"\n[INFO] Processing: {path_obj.name} -> {video_id} (Subpath: {output_subpath or '.'})")
+        print(f"\n[{self._elapsed()}] [INFO] Processing: {path_obj.name} -> {video_id} (Subpath: {output_subpath or '.'})")
 
         keypoints = self.extractor.extract_video(video_path)
         
@@ -107,7 +115,7 @@ class SkeletonPipeline:
         if keypoints.ndim == 3 and keypoints.shape[2] >= 2:
             keypoints = keypoints[:, :, :2].astype("float64")
             
-        print(f"       Frames extracted: {keypoints.shape[0]}")
+        print(f"[{self._elapsed()}]        Frames extracted: {keypoints.shape[0]}")
 
         if self.save_pickle:
             # Determine target split (train_dev or test)
@@ -130,7 +138,7 @@ class SkeletonPipeline:
         if self.save_excel:
             self.excel_conv.save(keypoints, video_id, output_subpath)
 
-        print(f"[DONE] {video_id}\n")
+        print(f"[{self._elapsed()}] [DONE] {video_id}\n")
         return keypoints
 
     def process_folder(self, folder_path: str, label: int = None) -> None:
@@ -151,10 +159,10 @@ class SkeletonPipeline:
         video_files = sorted([f for f in all_files if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS])
 
         if len(video_files) == 0:
-            print(f"[WARN] No supported video files found in: {folder_path}")
+            print(f"[{self._elapsed()}] [WARN] No supported video files found in: {folder_path}")
             return
 
-        print(f"[INFO] Found {len(video_files)} video(s) recursively in: {folder_path}")
+        print(f"[{self._elapsed()}] [INFO] Found {len(video_files)} video(s) recursively in: {folder_path}")
 
         for i, filepath in enumerate(video_files, 1):
             video_path = str(filepath)
@@ -164,10 +172,10 @@ class SkeletonPipeline:
             if output_subpath == ".":
                 output_subpath = ""
 
-            print(f"[{i}/{len(video_files)}] {rel_path}")
+            print(f"[{self._elapsed()}] [{i}/{len(video_files)}] {rel_path}")
             try:
                 self.process_video(video_path, label=label, output_subpath=output_subpath)
             except Exception as e:
-                print(f"[ERROR] Failed on {filepath.name}: {e}")
+                print(f"[{self._elapsed()}] [ERROR] Failed on {filepath.name}: {e}")
 
-        print(f"\n[INFO] Batch complete. {len(video_files)} video(s) processed.")
+        print(f"\n[{self._elapsed()}] [INFO] Batch complete. {len(video_files)} video(s) processed.")

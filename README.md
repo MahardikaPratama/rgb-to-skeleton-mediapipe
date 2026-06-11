@@ -6,6 +6,7 @@
 
 A standardized, high-performance preprocessing pipeline designed to convert **BISINDO (Indonesian Sign Language)** RGB videos into structured skeleton keypoints. This project utilizes **MediaPipe Holistic** to extract an 86-keypoint representation (Isharah Format) optimized for Sign Language Recognition (SLR) research.
 
+
 ---
 
 ## 📑 Table of Contents
@@ -31,6 +32,7 @@ This pipeline automates the transformation of raw sign language videos into deep
 - **86-Keypoint Extraction**: Captures hands, mouth, and upper body pose.
 
 - **Filename-Based Sample Keys**: Uses the renamed video filename stem directly as the sample key in pickle outputs.
+- **Checkpoint & Resume Support**: Existing pickle files with the same name are automatically loaded and appended/replaced, saving time if extraction is interrupted. Download the latest checkpoint [here](https://drive.google.com/drive/folders/1-K5yotG0PPatvr7l0L81dYc2YHr5jclB).
 - **Automated Data Splitting**: Synchronized with `splitting_data` results to generate `train_dev` and `test` datasets.
 - **Multi-Format Export**: Generates serialized Pickle files and subject-specific Excel files.
 
@@ -73,7 +75,7 @@ The pipeline operates in three distinct stages:
 
 - **Input**: Extracted Numpy keypoints.
 
-- **Process**: Dictionary aggregation using the video filename stem and Pickle serialization / Excel tabularization.
+- **Process**: Dictionary aggregation using the video filename stem and Pickle serialization / Excel tabularization. **Supports automatic checkpointing** (appends to or replaces existing keys in the pickle file).
 - **Output**: `.pkl` and `.xlsx` files in the `data/` directory.
 
 ---
@@ -153,8 +155,9 @@ guidelines. The high-level layout is:
 ```bash
 rgb-to-skeleton-mediapipe/
 ├── main.py                  # CLI entrypoint (orchestrates pipeline)
+├── rename_folder_file.py    # Helper script to standardize raw video names
 ├── data/
-│   ├── raw/                 # Raw videos and rename helper script
+│   ├── raw/                 # Raw videos to be processed
 │   ├── pickle/              # Serialized pickle outputs
 │   └── excel/               # Excel exports per subject
 ├── splitting_data/          # Data split utilities and results (CSV, lists)
@@ -192,9 +195,6 @@ conda env create -f environment.yml
 # Activate the created environment
 conda activate rgb-skeleton
 
-# Install any additional pip-only packages (optional)
-pip install -r requirements.txt
-```
 
 Notes:
 
@@ -228,8 +228,8 @@ python splitting_data/data_splitting.py --seed 42
 - Rename raw folders and videos before extraction:
 
 ```bash
-python data/raw/rename_folder_file.py --dry-run
-python data/raw/rename_folder_file.py
+python rename_folder_file.py --input data/raw --dry-run
+python rename_folder_file.py --input data/raw
 ```
 
 - Produce filtered pickle files from the CSV splits:

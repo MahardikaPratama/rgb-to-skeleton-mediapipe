@@ -32,8 +32,8 @@ All outputs are written under `splitting_data/results/`:
   - `results/SD/sd_test_list.txt`
 
 - SI (Speaker-Independent)
-  - `results/SI-MAJ/test.csv` and `results/SI-MAJ/si-maj_test_list.txt` (P06)
-  - `results/SI-MIN/test.csv` and `results/SI-MIN/si-min_test_list.txt` (P07)
+  - `results/SI-MAJ/test.csv` and `results/SI-MAJ/test_list.txt` (P6-MJ)
+  - `results/SI-MIN/test.csv` and `results/SI-MIN/test_list.txt` (P6-MN)
 
 - Pickle outputs (produced by `split_pose_pickle.py`):
   - `../data/pickle/pose_bisindo_train_dev_sd.pkl`
@@ -42,10 +42,10 @@ All outputs are written under `splitting_data/results/`:
   - `../data/pickle/pose_bisindo_test_si-min.pkl`
 
 Each list file uses a consistent sentence code format so that the same
-sentence (`Sxxx`) appears identical across different signers. Example line:
+sentence (`Sxx`) appears identical across different signers. Example line:
 
 ```
-P01_S001_R01|AYAH SAMA IBU MANA|Di mana ayah sama Ibu?
+P1_S01_R1|AYAH SAMA IBU MANA|Di mana ayah sama Ibu?
 ```
 
 ## Usage
@@ -53,27 +53,22 @@ P01_S001_R01|AYAH SAMA IBU MANA|Di mana ayah sama Ibu?
 1. Generate CSV splits and list files (uses Excel + pickle):
 
 ```bash
-python splitting_data/data_splitting.py --seed 42
+python splitting_data/data_splitting.py
 ```
 
 2. Produce filtered pickle files from the CSV splits:
 
 ```bash
-python splitting_data/split_pose_pickle.py --seed 42
+python splitting_data/split_pose_pickle.py
 ```
 
 ## Rules and Notes
 
 - SD split is repetition-based:
-  - train: R01, R02, R03
-  - dev: R04
-  - test: R05
-- SI-MAJ uses signer `P06`; SI-MIN uses signer `P07`.
-- If `P06` or `P07` are absent in the master pickle, the scripts will create
-  dummy entries by sampling donor signers (P01–P03 for P06; P04–P05 for P07).
-  Dummy samples preserve the original sentence codes (`Sxxx`) so the sentence
-  identity remains consistent across signers.
-- Set `--seed` to obtain reproducible dummy generation.
+  - train: R1, R2, R3
+  - dev: R4
+  - test: R5
+- SI-MAJ uses signer `P6` with repetition code `MJ` (Mayoritas); SI-MIN uses signer `P6` with repetition code `MN` (Minoritas).
 
 ## Maintenance
 

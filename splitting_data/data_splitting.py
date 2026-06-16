@@ -22,11 +22,10 @@ configured donor speakers.
 from __future__ import annotations
 
 import argparse
-import random
 import pickle
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
@@ -45,10 +44,9 @@ DEFAULT_SD_DIR = DEFAULT_RESULTS_DIR / "SD"
 DEFAULT_SI_MAJ_DIR = DEFAULT_RESULTS_DIR / "SI-MAJ"
 DEFAULT_SI_MIN_DIR = DEFAULT_RESULTS_DIR / "SI-MIN"
 
-TRAIN_REPETITIONS = {1, 2, 3}
-DEV_REPETITIONS = {4}
-TEST_REPETITIONS = {5}
-NUM_SI_SENTENCES = 30
+TRAIN_REPETITIONS = {"R1", "R2", "R3"}
+DEV_REPETITIONS = {"R4"}
+TEST_REPETITIONS = {"R5"}
 
 logger = get_logger(__name__)
 
@@ -92,23 +90,17 @@ def build_parser() -> argparse.ArgumentParser:
         default="Kalimat",
         help="Column name containing the sentence text (default: Kalimat)",
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Optional random seed for deterministic dummy speaker generation.",
-    )
     return parser
 
 
-def parse_sample_id(sample_id: str) -> Tuple[str, str, int]:
-    """Parse a sample id in the form ``Pxx_Sxxx_Rxx``.
+def parse_sample_id(sample_id: str) -> Tuple[str, str, str]:
+    """Parse a sample id in the form ``PX_SXX_RX`` or ``PX_SXX_MJ/MN``.
 
     Args:
         sample_id: Raw sample id string.
 
     Returns:
-        Tuple of ``(signer, sentence_id, repetition)``.
+        Tuple of ``(signer, sentence_id, repetition_or_variation)``.
 
     Raises:
         exceptions.ValidationException: If the id cannot be parsed.
@@ -120,16 +112,17 @@ def parse_sample_id(sample_id: str) -> Tuple[str, str, int]:
 
     signer = parts[0]
     sentence_id = parts[1]
-    repetition_digits = "".join(character for character in parts[2] if character.isdigit())
-    if not repetition_digits:
-        raise exceptions.ValidationException(f"Invalid repetition component in sample id: {sample_id}")
+    repetition_str = parts[2]
 
-    return signer, sentence_id, int(repetition_digits)
+    return signer, sentence_id, repetition_str
 
 
 def normalize_sentence(value: object) -> str:
     """Normalize a sentence-like value for stable Excel lookups."""
-    return " ".join(str(value).strip().upper().split())
+    val_str = " ".join(str(value).strip().upper().split())
+    if val_str.startswith("S") and len(val_str) > 1 and val_str[1:].isdigit():
+        return f"S{int(val_str[1:]):02}"
+    return val_str
 
 
 def sentence_sort_order(sentence_id: str) -> int:
@@ -207,7 +200,6 @@ def load_source_dataframe(
     if dataframe.empty:
         raise exceptions.ValidationException("No valid rows were loaded from the Excel file.")
 
-    dataframe["repetition"] = dataframe["repetition"].astype(int)
     dataframe["sentence_order"] = dataframe["sentence_id"].map(sentence_sort_order).astype(int)
     return dataframe.sort_values(["sentence_order", "repetition", "id"]).drop(columns=["sentence_order"]).reset_index(drop=True)
 
@@ -229,75 +221,6 @@ def split_sd_dataframe(dataframe: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFr
         raise exceptions.ValidationException("One or more SD splits are empty. Check repetition indices.")
 
     return train_df, dev_df, test_df
-
-
-def build_si_dataframe(
-    dataframe: pd.DataFrame,
-    target_signer: str,
-    donor_signers: Sequence[str],
-    seed: int | None,
-) -> pd.DataFrame:
-    """Build a speaker-independent dataframe for a target signer.
-
-    Existing rows for the target signer are kept first. If fewer than
-    ``NUM_SI_SENTENCES`` rows are present, dummy rows are created by sampling
-    from the donor signers.
-
-    Args:
-        dataframe: Normalized source dataframe.
-        target_signer: Signer id to construct, e.g. ``P06``.
-        donor_signers: Signer ids to sample from when filling missing rows.
-        seed: Optional deterministic seed.
-
-    Returns:
-        A dataframe containing exactly ``NUM_SI_SENTENCES`` rows when enough
-        donor data is available.
-
-    Raises:
-        exceptions.ConfigurationException: If there are no donor rows to sample.
-    """
-    rng = random.Random(seed)
-    target_rows = dataframe[dataframe["signer"] == target_signer].copy()
-    target_rows = target_rows.sort_values(["sentence_id", "repetition", "id"]).drop_duplicates(subset=["id"])
-
-    if len(target_rows) >= NUM_SI_SENTENCES:
-        return target_rows.head(NUM_SI_SENTENCES).reset_index(drop=True)
-
-    donor_rows = dataframe[dataframe["signer"].isin(donor_signers)].copy()
-    if donor_rows.empty:
-        raise exceptions.ConfigurationException(
-            f"No donor rows found for {target_signer}. Donors: {list(donor_signers)}"
-        )
-
-    output_rows = target_rows.to_dict(orient="records")
-    existing_ids = {str(row["id"]) for row in output_rows}
-    existing_sentence_ids = {str(row["sentence_id"]) for row in output_rows}
-
-    while len(output_rows) < NUM_SI_SENTENCES:
-        donor_row = donor_rows.iloc[rng.randrange(len(donor_rows))].to_dict()
-        donor_sentence_id = str(donor_row["sentence_id"])
-        if donor_sentence_id in existing_sentence_ids:
-            continue
-
-        dummy_id = f"{target_signer}_{donor_sentence_id}_R01"
-        if dummy_id in existing_ids:
-            continue
-
-        output_rows.append(
-            {
-                "id": dummy_id,
-                "gloss": donor_row["gloss"],
-                "text": donor_row["text"],
-                "signer": target_signer,
-                "sentence_id": donor_sentence_id,
-                "repetition": 1,
-            }
-        )
-        existing_ids.add(dummy_id)
-        existing_sentence_ids.add(donor_sentence_id)
-
-    output_dataframe = pd.DataFrame(output_rows)
-    return output_dataframe.sort_values(["id"]).reset_index(drop=True)
 
 
 def write_split_files(output_dir: Path, split_name: str, dataframe: pd.DataFrame, list_name: str) -> None:
@@ -324,19 +247,15 @@ def main() -> int:
     excel_path = args.excel_path if args.excel_path.is_absolute() else SCRIPT_DIR / args.excel_path
     pickle_path = args.pickle_path if args.pickle_path.is_absolute() else PROJECT_ROOT / args.pickle_path
 
-    if args.seed is not None:
-        random.seed(args.seed)
-        logger.info("Random seed set to %s", args.seed)
-
     dataframe = load_source_dataframe(excel_path, pickle_path, args.id_column, args.gloss_column, args.text_column)
     logger.info("Loaded %s normalized rows from %s and %s", len(dataframe), excel_path, pickle_path)
 
     train_df, dev_df, test_df = split_sd_dataframe(dataframe)
     logger.info("SD split sizes -> train: %s, dev: %s, test: %s", len(train_df), len(dev_df), len(test_df))
 
-    si_maj_df = build_si_dataframe(dataframe, "P06", ["P01", "P02", "P03"], args.seed)
-    si_min_df = build_si_dataframe(dataframe, "P07", ["P04", "P05"], args.seed)
-    logger.info("SI split sizes -> P06: %s, P07: %s", len(si_maj_df), len(si_min_df))
+    si_maj_df = dataframe[(dataframe["signer"] == "P6") & (dataframe["repetition"] == "MJ")].copy()
+    si_min_df = dataframe[(dataframe["signer"] == "P6") & (dataframe["repetition"] == "MN")].copy()
+    logger.info("SI split sizes -> P6-MJ: %s, P6-MN: %s", len(si_maj_df), len(si_min_df))
 
     write_split_files(DEFAULT_SD_DIR, "train", train_df, "train_list.txt")
     write_split_files(DEFAULT_SD_DIR, "dev", dev_df, "dev_list.txt")

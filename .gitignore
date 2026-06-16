@@ -214,6 +214,7 @@ __marimo__/
 *.xlsx
 *.png
 *.csv
+!splitting_data/raw_data/Gloss dan Tanda Dataset.xlsx
 
 # External Folder
 docs/

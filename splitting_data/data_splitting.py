@@ -1,22 +1,23 @@
-"""Create SD and SI split files from the BISINDO Excel dataset.
+"""Create train/dev and SI test split files from the BISINDO Excel dataset.
 
-The script reads the source Excel sheet, parses sample ids in the form
-``Pxx_Sxxx_Rxx``, and writes the following outputs:
+Signer-Independent (SI) only scenario:
 
-- ``SD/sd_train_list.txt``
-- ``SD/sd_dev_list.txt``
-- ``SD/sd_test_list.txt``
-- ``SD/train.csv``
-- ``SD/dev.csv``
-- ``SD/test.csv``
-- ``SI-MAJ/si-maj_test_list.txt``
-- ``SI-MAJ/test.csv``
-- ``SI-MIN/si-min_test_list.txt``
-- ``SI-MIN/test.csv``
+- Train  : P1-P5, repetitions R1, R2, R3, R4  (4 of 5)  -> 600
+- Dev     : P1-P5, repetition  R5              (1 of 5)  -> 150
+- Test    : P6 only, evaluated per-gloss as MJ vs MN      -> 57
 
-Speaker-independent outputs prefer real data when speaker rows already exist.
-If speaker rows are missing, the script creates dummy rows by sampling from the
-configured donor speakers.
+There is intentionally no held-out test split here. R5 is folded
+into training so the majority/minority gloss ratio matches the original
+data and no signer is held back from P1-P5.
+
+Outputs written under ``results/``:
+
+- ``SI/train.csv`` / ``SI/train_list.txt``
+- ``SI/dev.csv``   / ``SI/dev_list.txt``
+- ``SI-MAJ/test.csv`` / ``SI-MAJ/test_list.txt``   (P6-MJ)
+- ``SI-MIN/test.csv`` / ``SI-MIN/test_list.txt``   (P6-MN)
+
+NOTE: the ``SI/`` folder holds the SI train/dev splits (P1-P5).
 """
 
 from __future__ import annotations
@@ -40,13 +41,13 @@ from src.utils.logger import get_logger
 
 DEFAULT_EXCEL_PATH = Path("./raw_data/Gloss dan Tanda Dataset.xlsx")
 DEFAULT_RESULTS_DIR = SCRIPT_DIR / "results"
-DEFAULT_SD_DIR = DEFAULT_RESULTS_DIR / "SD"
+DEFAULT_SI_DIR = DEFAULT_RESULTS_DIR / "SI"
 DEFAULT_SI_MAJ_DIR = DEFAULT_RESULTS_DIR / "SI-MAJ"
 DEFAULT_SI_MIN_DIR = DEFAULT_RESULTS_DIR / "SI-MIN"
 
-TRAIN_REPETITIONS = {"R1", "R2", "R3"}
-DEV_REPETITIONS = {"R4"}
-TEST_REPETITIONS = {"R5"}
+# SI-only: R1-R4 is folded into training; R5 is dev. P6 is the separate test.
+TRAIN_REPETITIONS = {"R1", "R2", "R3", "R4"}
+DEV_REPETITIONS = {"R5"}
 
 logger = get_logger(__name__)
 
@@ -58,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
         Configured argparse parser.
     """
     parser = argparse.ArgumentParser(
-        description="Create SD and SI split files from the Gloss dan Tanda Excel dataset."
+        description="Create train/dev and SI test split files from the Gloss dan Tanda Excel dataset."
     )
     parser.add_argument(
         "--excel-path",
@@ -204,23 +205,22 @@ def load_source_dataframe(
     return dataframe.sort_values(["sentence_order", "repetition", "id"]).drop(columns=["sentence_order"]).reset_index(drop=True)
 
 
-def split_sd_dataframe(dataframe: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split the dataframe into SD train, dev, and test sets.
+def split_train_dev_dataframe(dataframe: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Split the dataframe into train and dev sets (SI-only; P6 is the separate test).
 
     Args:
         dataframe: Normalized source dataframe.
 
     Returns:
-        Tuple of train, dev, and test dataframes.
+        Tuple of train and dev dataframes.
     """
     train_df = dataframe[dataframe["repetition"].isin(TRAIN_REPETITIONS)].copy()
     dev_df = dataframe[dataframe["repetition"].isin(DEV_REPETITIONS)].copy()
-    test_df = dataframe[dataframe["repetition"].isin(TEST_REPETITIONS)].copy()
 
-    if train_df.empty or dev_df.empty or test_df.empty:
-        raise exceptions.ValidationException("One or more SD splits are empty. Check repetition indices.")
+    if train_df.empty or dev_df.empty:
+        raise exceptions.ValidationException("Train or dev split is empty. Check repetition indices.")
 
-    return train_df, dev_df, test_df
+    return train_df, dev_df
 
 
 def write_split_files(output_dir: Path, split_name: str, dataframe: pd.DataFrame, list_name: str) -> None:
@@ -250,20 +250,19 @@ def main() -> int:
     dataframe = load_source_dataframe(excel_path, pickle_path, args.id_column, args.gloss_column, args.text_column)
     logger.info("Loaded %s normalized rows from %s and %s", len(dataframe), excel_path, pickle_path)
 
-    train_df, dev_df, test_df = split_sd_dataframe(dataframe)
-    logger.info("SD split sizes -> train: %s, dev: %s, test: %s", len(train_df), len(dev_df), len(test_df))
+    train_df, dev_df = split_train_dev_dataframe(dataframe)
+    logger.info("Train/dev split sizes -> train: %s, dev: %s", len(train_df), len(dev_df))
 
     si_maj_df = dataframe[(dataframe["signer"] == "P6") & (dataframe["repetition"] == "MJ")].copy()
     si_min_df = dataframe[(dataframe["signer"] == "P6") & (dataframe["repetition"] == "MN")].copy()
     logger.info("SI split sizes -> P6-MJ: %s, P6-MN: %s", len(si_maj_df), len(si_min_df))
 
-    write_split_files(DEFAULT_SD_DIR, "train", train_df, "train_list.txt")
-    write_split_files(DEFAULT_SD_DIR, "dev", dev_df, "dev_list.txt")
-    write_split_files(DEFAULT_SD_DIR, "test", test_df, "test_list.txt")
+    write_split_files(DEFAULT_SI_DIR, "train", train_df, "train_list.txt")
+    write_split_files(DEFAULT_SI_DIR, "dev", dev_df, "dev_list.txt")
     write_split_files(DEFAULT_SI_MAJ_DIR, "test", si_maj_df, "test_list.txt")
     write_split_files(DEFAULT_SI_MIN_DIR, "test", si_min_df, "test_list.txt")
 
-    logger.info("Outputs written to %s, %s, and %s", DEFAULT_SD_DIR, DEFAULT_SI_MAJ_DIR, DEFAULT_SI_MIN_DIR)
+    logger.info("Outputs written to %s, %s, and %s", DEFAULT_SI_DIR, DEFAULT_SI_MAJ_DIR, DEFAULT_SI_MIN_DIR)
     return 0
 
 

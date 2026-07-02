@@ -214,7 +214,9 @@ __marimo__/
 *.xlsx
 *.png
 *.csv
-!splitting_data/raw_data/Gloss dan Tanda Dataset.xlsx
+!data/daftar-kalimat-dan-gloss.csv
 
 # External Folder
 docs/
+
+*.pdf

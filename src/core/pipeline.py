@@ -58,9 +58,9 @@ class SkeletonPipeline:
 
     def _load_split_mapping(self):
         """
-        Loads the video ID to split mapping from the splitting_data results.
+        Loads the video ID to split mapping from the data/results directory.
         """
-        split_dir = os.path.join(PROJECT_ROOT, "splitting_data", "results")
+        split_dir = os.path.join(PROJECT_ROOT, "data", "results")
         mapping = {}
         
         # Combine train and dev into 'train_dev', keep 'test' separate
